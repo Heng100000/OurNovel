@@ -1,0 +1,31 @@
+npm warn Unknown project config "public-hoist-pattern". This will stop working in the next major version of npm.
+
+> build
+> vite build
+
+3:06:46 PM [vite-plugin-svelte] no Svelte config found at D:/Web/laravel_svelte/svelte_demo - using default configuration.
+[36mvite v7.3.1 [32mbuilding client environment for production...[36m[39m
+[plugin @laravel/vite-plugin-wayfinder] Types generated for actions, routes, form variants
+transforming...
+[32m✓[39m 4858 modules transformed.
+[31m✗[39m Build failed in 14.99s
+[31merror during build:
+[31mresources/js/pages/Task/Index.svelte (2:22): "Head" is not exported by "node_modules/@inertiajs/svelte/dist/index.js", imported by "resources/js/pages/Task/Index.svelte".[31m
+file: [36mD:/Web/laravel_svelte/svelte_demo/resources/js/pages/Task/Index.svelte:2:22[31m
+[33m
+1: <script lang="ts">
+2:     import { useForm, Head } from '@inertiajs/svelte';
+                         ^
+3:     import AppLayout from '@/layouts/AppLayout.svelte';
+4:     import { Button } from '@/components/ui/button';
+[31m
+    at getRollupError (file:///D:/Web/laravel_svelte/svelte_demo/node_modules/rollup/dist/es/shared/parseAst.js:402:41)
+    at error (file:///D:/Web/laravel_svelte/svelte_demo/node_modules/rollup/dist/es/shared/parseAst.js:398:42)
+    at Module.error (file:///D:/Web/laravel_svelte/svelte_demo/node_modules/rollup/dist/es/shared/node-entry.js:17040:16)
+    at Module.traceVariable (file:///D:/Web/laravel_svelte/svelte_demo/node_modules/rollup/dist/es/shared/node-entry.js:17452:29)
+    at ModuleScope.findVariable (file:///D:/Web/laravel_svelte/svelte_demo/node_modules/rollup/dist/es/shared/node-entry.js:15070:39)
+    at FunctionScope.findVariable (file:///D:/Web/laravel_svelte/svelte_demo/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+    at FunctionBodyScope.findVariable (file:///D:/Web/laravel_svelte/svelte_demo/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+    at Identifier.bind (file:///D:/Web/laravel_svelte/svelte_demo/node_modules/rollup/dist/es/shared/node-entry.js:5447:40)
+    at CallExpression.bind (file:///D:/Web/laravel_svelte/svelte_demo/node_modules/rollup/dist/es/shared/node-entry.js:2829:23)
+    at CallExpression.bind (file:///D:/Web/laravel_svelte/svelte_demo/node_modules/rollup/dist/es/shared/node-entry.js:12179:15)[39m

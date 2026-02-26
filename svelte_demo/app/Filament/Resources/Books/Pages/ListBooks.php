@@ -1,0 +1,24 @@
+<?php
+
+namespace App\Filament\Resources\Books\Pages;
+
+use App\Filament\Resources\Books\BookResource;
+use Filament\Actions\CreateAction;
+use Filament\Resources\Pages\ListRecords;
+
+class ListBooks extends ListRecords
+{
+    protected static string $resource = BookResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make(),
+        ];
+    }
+
+    protected function getTableQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return parent::getTableQuery()->with(['category', 'author', 'promotion']);
+    }
+}
