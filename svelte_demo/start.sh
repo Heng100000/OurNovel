@@ -15,8 +15,4 @@ php artisan config:cache || true
 php artisan route:cache || true
 php artisan view:cache || true
 
-echo "Setup complete. Supervisor will now start Apache and Reverb."
-
-# Start the supervisor managed programs
-supervisorctl start apache2
-supervisorctl start reverb
+echo "Setup complete."
