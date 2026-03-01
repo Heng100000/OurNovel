@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\CartItem;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use App\Http\Resources\CartItemResource;
+use App\Models\CartItem;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class CartItemController extends Controller
@@ -14,6 +14,7 @@ class CartItemController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $items = $request->user()->cartItems()->with('book.primaryImage')->get();
+
         return CartItemResource::collection($items);
     }
 
@@ -43,9 +44,11 @@ class CartItemController extends Controller
             $cartItem->quantity = $newQuantity;
             $cartItem->save();
         } else {
+            $unitPrice = $book->discounted_price ?? $book->price;
             $cartItem = $request->user()->cartItems()->create([
                 'book_id' => $request->book_id,
                 'quantity' => $request->quantity,
+                'unit_price' => $unitPrice,
             ]);
         }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/widgets/global_loader.dart';
 import '../../data/auth_service.dart';
 import '../../../../widget/home_screen.dart';
 import 'login_page.dart';
@@ -384,7 +385,7 @@ class _SignupPageState extends State<SignupPage> with SingleTickerProviderStateM
                                     ? const SizedBox(
                                         height: 24,
                                         width: 24,
-                                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                        child: const GlobalLoader(size: 20, color: Colors.white),
                                       )
                                     : const Text(
                                         'SIGN UP',

@@ -4,14 +4,13 @@ namespace App\Filament\Resources\Orders\Schemas;
 
 use App\Models\Book;
 use App\Models\CartItem;
-use App\Models\ShippingRate;
-use App\Models\UserAddress;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Repeater;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
-use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
 class OrderForm
@@ -33,9 +32,10 @@ class OrderForm
                             ->required()
                             ->live()
                             ->afterStateUpdated(function (Set $set, ?string $state) {
-                                if (!$state) {
+                                if (! $state) {
                                     $set('items', []);
                                     static::updateTotalPrice(null, $set);
+
                                     return;
                                 }
 
@@ -46,13 +46,14 @@ class OrderForm
                                 if ($cartItems->isEmpty()) {
                                     $set('items', []);
                                     static::updateTotalPrice(null, $set);
+
                                     return;
                                 }
 
                                 $items = $cartItems->map(function ($item) {
                                     $unitPrice = $item->book->discounted_price ?? $item->book->price ?? 0;
                                     $quantity = $item->quantity;
-                                    
+
                                     return [
                                         'book_id' => $item->book_id,
                                         'quantity' => $quantity,
@@ -84,6 +85,7 @@ class OrderForm
                                 'processing' => 'Processing',
                                 'shipped' => 'Shipped',
                                 'completed' => 'Completed',
+                                'paid' => 'Paid',
                                 'cancelled' => 'Cancelled',
                             ])
                             ->required()
@@ -118,6 +120,34 @@ class OrderForm
                             ->prefix('$')
                             ->readOnly()
                             ->default(0.00),
+                        Placeholder::make('payment_info')
+                            ->label('Payment Information')
+                            ->content(function ($record) {
+                                if (! $record?->payment) {
+                                    return new \Illuminate\Support\HtmlString('<span class="fi-badge fi-color-gray flex items-center gap-x-1 px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">Not Paid</span>');
+                                }
+
+                                $method = strtolower($record->payment->method);
+                                $label = strtoupper($method === 'bakong' ? 'KHQR' : $method);
+                                $color = match ($method) {
+                                    'aba' => '#005aab',
+                                    'aceleda' => '#1b365d',
+                                    'bakong' => '#0f7a47',
+                                    'cash' => '#6b7280',
+                                    default => '#0f7a47',
+                                };
+
+                                return new \Illuminate\Support\HtmlString("
+                                    <div class='flex items-center gap-2'>
+                                        <span style='background-color: {$color}; color: white;' class='px-2 py-1 text-xs font-bold rounded-full'>
+                                            {$label}
+                                        </span>
+                                        <span class='text-sm text-gray-500'>
+                                            ID: {$record->payment->id}
+                                        </span>
+                                    </div>
+                                ");
+                            }),
                     ]),
 
                 Section::make('Order Items')
@@ -135,14 +165,14 @@ class OrderForm
                                     ->required()
                                     ->live()
                                     ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
-                                        if (!$state) {
+                                        if (! $state) {
                                             return;
                                         }
 
                                         $book = Book::find($state);
                                         $price = $book?->discounted_price ?? $book?->price ?? 0;
                                         $set('unit_price', $price);
-                                        
+
                                         $set('item_total', number_format(($get('quantity') ?? 1) * $price, 2, '.', ''));
                                         static::updateTotalPrice($get, $set);
                                     })
@@ -194,7 +224,7 @@ class OrderForm
     protected static function updateTotalPrice(?Get $get, Set $set): void
     {
         $items = $get ? ($get('items') ?? []) : [];
-        
+
         $subtotal = collect($items)->reduce(function ($carry, $item) {
             return $carry + ($item['quantity'] ?? 0) * ($item['unit_price'] ?? 0);
         }, 0);

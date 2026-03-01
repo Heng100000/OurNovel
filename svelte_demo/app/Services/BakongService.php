@@ -11,14 +11,17 @@ use KHQR\Models\IndividualInfo;
 class BakongService
 {
     protected string $token;
+
     protected string $accountId;
+
     protected string $merchantName;
+
     protected string $merchantCity;
 
     public function __construct()
     {
-        $this->token        = (string) config('services.bakong.token', '');
-        $this->accountId    = (string) config('services.bakong.account_id', '');
+        $this->token = (string) config('services.bakong.token', '');
+        $this->accountId = (string) config('services.bakong.account_id', '');
         $this->merchantName = (string) config('services.bakong.merchant_name', 'Shop');
         $this->merchantCity = (string) config('services.bakong.merchant_city', 'Phnom Penh');
     }
@@ -45,15 +48,17 @@ class BakongService
 
             if ($response->status['code'] !== 0) {
                 Log::error('Bakong QR generation failed', $response->status);
+
                 return null;
             }
 
             return [
-                'qr'  => $response->data['qr'],
+                'qr' => $response->data['qr'],
                 'md5' => $response->data['md5'],
             ];
         } catch (\Exception $e) {
             Log::error('Bakong generateQR exception', ['message' => $e->getMessage()]);
+
             return null;
         }
     }
@@ -68,6 +73,7 @@ class BakongService
     {
         if (empty($this->token)) {
             Log::error('Bakong token is not configured.');
+
             return false;
         }
 
@@ -82,22 +88,30 @@ class BakongService
                 ]);
 
             Log::info('Bakong Check API Response', [
-                'md5'    => $md5,
+                'md5' => $md5,
                 'status' => $response->status(),
-                'data'   => $response->json(),
+                'data' => $response->json(),
             ]);
 
             if ($response->successful()) {
                 $data = $response->json();
+                Log::info('Bakong Check Parsed Data', ['data' => $data]);
+
                 // Success: responseCode = 0 and data is not null
                 return isset($data['responseCode'])
                     && $data['responseCode'] === 0
                     && ! empty($data['data']);
             }
 
+            Log::warning('Bakong Check Request Failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
             return false;
         } catch (\Exception $e) {
             Log::error('Bakong checkTransaction exception', ['message' => $e->getMessage()]);
+
             return false;
         }
     }
@@ -107,6 +121,6 @@ class BakongService
      */
     public function getQrImageUrl(string $qrString): string
     {
-        return 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . urlencode($qrString);
+        return 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data='.urlencode($qrString);
     }
 }

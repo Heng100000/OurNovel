@@ -44,8 +44,9 @@ class _ModernScannerPageState extends State<ModernScannerPage>
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
     final scanWindow = Rect.fromCenter(
-      center: Offset(MediaQuery.of(context).size.width / 2, MediaQuery.of(context).size.height / 2),
+      center: Offset(size.width / 2, size.height / 2 - 50),
       width: 280,
       height: 280,
     );
@@ -72,22 +73,28 @@ class _ModernScannerPageState extends State<ModernScannerPage>
             painter: ScannerOverlayPainter(scanWindow: scanWindow),
             child: Container(),
           ),
+          
           // Animated Scanning Line
           AnimatedBuilder(
             animation: _animation,
             builder: (context, child) {
               return Positioned(
                 top: scanWindow.top + (scanWindow.height * _animation.value),
-                left: scanWindow.left + 10,
-                right: scanWindow.left + 10,
+                left: scanWindow.left + 20,
+                right: scanWindow.left + 20,
                 child: Container(
-                  height: 3,
+                  height: 2,
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(10),
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.white.withOpacity(0),
+                        Colors.white,
+                        Colors.white.withOpacity(0),
+                      ],
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withOpacity(0.5),
+                        color: Colors.white.withOpacity(0.5),
                         blurRadius: 10,
                         spreadRadius: 2,
                       ),
@@ -97,67 +104,88 @@ class _ModernScannerPageState extends State<ModernScannerPage>
               );
             },
           ),
-          // Top Controls (Close)
+
+          // Top Back Button
           Positioned(
             top: MediaQuery.of(context).padding.top + 10,
-            left: 20,
-            child: GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(50),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            left: 10,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 30),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+
+          // Bottom Curved Container
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Stack(
+              alignment: Alignment.topCenter,
+              clipBehavior: Clip.none,
+              children: [
+                // Curved White Background
+                CustomPaint(
+                  size: Size(size.width, 160),
+                  painter: BottomCurvePainter(),
+                ),
+                
+                // Centered Scanner Icon/Button
+                Positioned(
+                  top: -45,
                   child: Container(
-                    padding: const EdgeInsets.all(10),
-                    color: Colors.white.withOpacity(0.2),
-                    child: const Icon(Icons.close, color: Colors.white, size: 24),
+                    padding: const EdgeInsets.all(5),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF5a7335), // Dark green border/bg
+                      shape: BoxShape.circle,
+                    ),
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.document_scanner_outlined,
+                          color: Color(0xFF5a7335),
+                          size: 40,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ),
-          // Center Title
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 15,
-            left: 0,
-            right: 0,
-            child: const Center(
-              child: Text(
-                'ស្កែនបាកូដ',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Hanuman',
-                ),
-              ),
-            ),
-          ),
-          // Bottom Controls (Torch & Camera Flip)
-          Positioned(
-            bottom: 50,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildActionButton(
-                  icon: Icons.flashlight_on_outlined,
-                  onTap: () => _controller.toggleTorch(),
-                  label: 'Torch',
-                ),
-                const SizedBox(width: 40),
-                _buildActionButton(
-                  icon: Icons.flip_camera_ios_outlined,
-                  onTap: () => _controller.switchCamera(),
-                  label: 'Flip',
+
+                // Action Labels or Buttons inside white area
+                Positioned(
+                  bottom: 40,
+                  left: 0,
+                  right: 0,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildBottomAction(
+                        icon: Icons.flashlight_on_rounded,
+                        label: 'Flashlight',
+                        onTap: () => _controller.toggleTorch(),
+                      ),
+                      const SizedBox(width: 80), // Space for centered button
+                      _buildBottomAction(
+                        icon: Icons.flip_camera_ios_rounded,
+                        label: 'Flip Camera',
+                        onTap: () => _controller.switchCamera(),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
+
           // Helper Text
           Positioned(
-            top: scanWindow.bottom + 20,
+            top: scanWindow.bottom + 40,
             left: 0,
             right: 0,
             child: const Center(
@@ -165,8 +193,9 @@ class _ModernScannerPageState extends State<ModernScannerPage>
                 'ដាក់បាកូដក្នុងប្រអប់ដើម្បីស្កែន',
                 style: TextStyle(
                   color: Colors.white70,
-                  fontSize: 14,
+                  fontSize: 16,
                   fontFamily: 'Hanuman',
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -176,35 +205,57 @@ class _ModernScannerPageState extends State<ModernScannerPage>
     );
   }
 
-  Widget _buildActionButton({
+  Widget _buildBottomAction({
     required IconData icon,
-    required VoidCallback onTap,
     required String label,
+    required VoidCallback onTap,
   }) {
-    return Column(
-      children: [
-        GestureDetector(
-          onTap: onTap,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(50),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(
-                padding: const EdgeInsets.all(15),
-                color: Colors.white.withOpacity(0.2),
-                child: Icon(icon, color: Colors.white, size: 28),
-              ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: const Color(0xFF5a7335), size: 28),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.grey,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: const TextStyle(color: Colors.white, fontSize: 12),
-        ),
-      ],
+        ],
+      ),
     );
   }
+}
+
+class BottomCurvePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    var paint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+
+    var path = Path();
+    path.moveTo(0, size.height);
+    path.lineTo(size.width, size.height);
+    path.lineTo(size.width, 60);
+    
+    // Create the curve
+    path.quadraticBezierTo(
+      size.width / 2, -20, // Control point
+      0, 60, // End point
+    );
+    
+    path.close();
+    canvas.drawShadow(path, Colors.black, 10, true);
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
 
 class ScannerOverlayPainter extends CustomPainter {
@@ -215,68 +266,67 @@ class ScannerOverlayPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final backgroundPaint = Paint()
-      ..color = Colors.black.withOpacity(0.65)
+      ..color = Colors.black.withOpacity(0.6)
       ..style = PaintingStyle.fill;
 
     final borderPaint = Paint()
-      ..color = AppColors.primary
+      ..color = Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0;
+      ..strokeWidth = 4.0
+      ..strokeCap = StrokeCap.round;
 
-
-    // This is tricky, let's use a simpler way to draw the dimmed background with a hole
+    // Dimmed background with cutout
     canvas.drawPath(
       Path.combine(
         PathOperation.difference,
         Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height)),
-        Path()..addRRect(RRect.fromRectAndRadius(scanWindow, const Radius.circular(20))),
+        Path()..addRRect(RRect.fromRectAndRadius(scanWindow, const Radius.circular(24))),
       ),
       backgroundPaint,
     );
 
-    // Draw the corners of the box instead of full border for a "cooler" look
-    final rrect = RRect.fromRectAndRadius(scanWindow, const Radius.circular(20));
-    
-    // Draw 4 corners
-    const double cornerLength = 30.0;
+    // Draw 4 corners (brackets)
+    const double cornerLength = 40.0;
+    const double radius = 24.0;
+    final rect = scanWindow;
     
     // Top Left
     canvas.drawPath(
       Path()
-        ..moveTo(rrect.left, rrect.top + cornerLength)
-        ..lineTo(rrect.left, rrect.top + 20)
-        ..arcToPoint(Offset(rrect.left + 20, rrect.top), radius: const Radius.circular(20))
-        ..lineTo(rrect.left + cornerLength, rrect.top),
+        ..moveTo(rect.left, rect.top + cornerLength)
+        ..lineTo(rect.left, rect.top + radius)
+        ..arcToPoint(Offset(rect.left + radius, rect.top), radius: const Radius.circular(radius))
+        ..lineTo(rect.left + cornerLength, rect.top),
       borderPaint,
     );
 
     // Top Right
     canvas.drawPath(
       Path()
-        ..moveTo(rrect.right - cornerLength, rrect.top)
-        ..lineTo(rrect.right - 20, rrect.top)
-        ..arcToPoint(Offset(rrect.right, rrect.top + 20), radius: const Radius.circular(20))
-        ..lineTo(rrect.right, rrect.top + cornerLength),
+        ..moveTo(rect.right - cornerLength, rect.top)
+        ..lineTo(rect.right - radius, rect.top)
+        ..arcToPoint(Offset(rect.right, rect.top + radius), radius: const Radius.circular(radius))
+        ..lineTo(rect.right, rect.top + cornerLength),
       borderPaint,
     );
 
     // Bottom Right
     canvas.drawPath(
       Path()
-        ..moveTo(rrect.right, rrect.bottom - cornerLength)
-        ..lineTo(rrect.right, rrect.bottom - 20)
-        ..arcToPoint(Offset(rrect.right - 20, rrect.bottom), radius: const Radius.circular(20))
-        ..lineTo(rrect.right - cornerLength, rrect.bottom),
+        ..moveTo(rect.right, rect.bottom - cornerLength)
+        ..lineTo(rect.right, rect.bottom - radius)
+        ..arcToPoint(Offset(rect.right - radius, rect.bottom), radius: const Radius.circular(radius))
+        ..lineTo(rect.right - cornerLength, rect.bottom),
       borderPaint,
     );
 
     // Bottom Left
     canvas.drawPath(
       Path()
-        ..moveTo(rrect.left + cornerLength, rrect.bottom)
-        ..lineTo(rrect.left + 20, rrect.bottom)
-        ..arcToPoint(Offset(rrect.left, rrect.bottom - 20), radius: const Radius.circular(20))
-        ..lineTo(rrect.left, rrect.bottom - cornerLength),
+        ..moveTo(rect.left + cornerLength, rect.bottom)
+        ..lineTo(rect.left + radius, rect.bottom)
+        ..arcToPoint(Offset(rect.left, rect.bottom - radius), radius: const Radius.circular(radius))
+        ..lineTo(rect.left, rect.bottom - cornerLength),
       borderPaint,
     );
   }

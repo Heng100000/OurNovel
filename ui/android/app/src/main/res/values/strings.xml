@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Our Novel</string>
+    <string name="facebook_app_id">2064729153994665</string>
+    <string name="fb_login_protocol_scheme">fb2064729153994665</string>
+    <string name="facebook_client_token">953a4a5074117bfd7892589f32193dea</string>
+</resources>

@@ -15,7 +15,7 @@ class BannerForm
             ->components([
                 TextInput::make('title'),
                 FileUpload::make('image_url')
-                    ->image()
+                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'])
                     ->required(),
                 TextInput::make('action_type')
                     ->required()

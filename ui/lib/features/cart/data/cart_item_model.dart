@@ -5,6 +5,7 @@ class CartItemModel {
   final int userId;
   final int bookId;
   final String? bookTitle;
+  final String? bookAuthor;
   final String? bookImage;
   int quantity;
   final double unitPrice;
@@ -15,6 +16,7 @@ class CartItemModel {
     required this.userId,
     required this.bookId,
     this.bookTitle,
+    this.bookAuthor,
     this.bookImage,
     required this.quantity,
     required this.unitPrice,
@@ -27,6 +29,7 @@ class CartItemModel {
       userId: json['user_id'],
       bookId: json['book_id'],
       bookTitle: json['book_title'],
+      bookAuthor: json['book_author'],
       bookImage: UrlUtil.formatImageUrl(json['book_image']),
       quantity: json['quantity'] ?? 1,
       unitPrice: double.tryParse(json['unit_price'].toString()) ?? 0.0,

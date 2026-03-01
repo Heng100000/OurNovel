@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../core/widgets/global_loader.dart';
 import 'address_edit_page.dart';
 import 'map_picker_page.dart';
 import 'package:geolocator/geolocator.dart';
@@ -38,6 +39,9 @@ class _CartPageState extends State<CartPage> {
   int? _selectedDeliveryId;
   List<DeliveryCompany> _deliveryCompanies = [];
   bool _isLoadingDelivery = true;
+  String? _deliveryError;
+  String _deliveryMethod = 'delivery'; // 'delivery' or 'pickup'
+  String _paymentMethod = 'bakong'; // 'bakong' or 'cash'
   // --- Replaced with dynamic data from API ---
 
   // Address State
@@ -81,18 +85,27 @@ class _CartPageState extends State<CartPage> {
   Future<void> _fetchDeliveryCompanies() async {
     setState(() {
       _isLoadingDelivery = true;
+      _deliveryError = null;
     });
 
-    final companies = await DeliveryService().getDeliveryCompanies();
-
-    if (mounted) {
-      setState(() {
-        _deliveryCompanies = companies;
-        if (companies.isNotEmpty) {
-          _selectedDeliveryId = companies.first.id;
-        }
-        _isLoadingDelivery = false;
-      });
+    try {
+      final companies = await DeliveryService().getDeliveryCompanies(forceRefresh: true);
+      if (mounted) {
+        setState(() {
+          _deliveryCompanies = companies;
+          if (companies.isNotEmpty) {
+            _selectedDeliveryId = companies.first.id;
+          }
+          _isLoadingDelivery = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _deliveryError = e.toString();
+          _isLoadingDelivery = false;
+        });
+      }
     }
   }
 
@@ -108,59 +121,74 @@ class _CartPageState extends State<CartPage> {
         _cartItems = items;
         _isLoadingCart = false;
       });
+      Provider.of<CartProvider>(context, listen: false).updateCartLocally(items);
     }
+  }
+  
+  Future<void> _handleRefresh() async {
+    await Future.wait([
+      _fetchCartItems(),
+      _fetchDeliveryCompanies(),
+      _loadUserAddress(),
+    ]);
   }
 
   Future<void> _updateQuantity(CartItemModel item, int newQuantity) async {
     if (newQuantity < 1) return;
 
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+
     // Optimistic UI update
     setState(() {
       item.quantity = newQuantity;
     });
+    cartProvider.updateCartLocally(_cartItems);
 
     final errorMessage =
         await CartService().updateCartItemQuantity(item.id, newQuantity);
-    if (errorMessage != null && mounted) {
-      // Revert if failed
-      toastification.show(
-        context: context,
-        type: ToastificationType.error,
-        style: ToastificationStyle.flatColored,
-        title: const Text('Error'),
-        description: Text(errorMessage),
-        alignment: Alignment.topRight,
-        autoCloseDuration: const Duration(seconds: 4),
-      );
-      _fetchCartItems(); // Re-fetch to get correct state
-    } else if (mounted) {
-      final newTotalCount = _cartItems.fold(0, (sum, item) => sum + item.quantity);
-      Provider.of<CartProvider>(context, listen: false).updateCount(newTotalCount);
+    if (errorMessage != null) {
+      if (mounted) {
+        toastification.show(
+          context: context,
+          type: ToastificationType.error,
+          style: ToastificationStyle.flatColored,
+          title: const Text('Error'),
+          description: Text(errorMessage),
+          alignment: Alignment.topRight,
+          autoCloseDuration: const Duration(seconds: 4),
+        );
+        _fetchCartItems(); // Re-fetch to get correct state
+      } else {
+        cartProvider.fetchCartCount(); // Revert if unmounted
+      }
     }
   }
 
   Future<void> _removeItem(int index, CartItemModel item) async {
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+
     // Optimistic UI update
     setState(() {
       _cartItems.removeAt(index);
     });
+    cartProvider.updateCartLocally(_cartItems);
 
     final success = await CartService().removeCartItem(item.id);
-    if (!success && mounted) {
-      // Revert if failed
-      toastification.show(
-        context: context,
-        type: ToastificationType.error,
-        style: ToastificationStyle.flatColored,
-        title: const Text('Error'),
-        description: const Text('Failed to remove item'),
-        alignment: Alignment.topRight,
-        autoCloseDuration: const Duration(seconds: 4),
-      );
-      _fetchCartItems(); // Re-fetch to get correct state
-    } else if (mounted) {
-      final newTotalCount = _cartItems.fold(0, (sum, item) => sum + item.quantity);
-      Provider.of<CartProvider>(context, listen: false).updateCount(newTotalCount);
+    if (!success) {
+      if (mounted) {
+        toastification.show(
+          context: context,
+          type: ToastificationType.error,
+          style: ToastificationStyle.flatColored,
+          title: const Text('Error'),
+          description: const Text('Failed to remove item'),
+          alignment: Alignment.topRight,
+          autoCloseDuration: const Duration(seconds: 4),
+        );
+        _fetchCartItems(); // Re-fetch to get correct state
+      } else {
+        cartProvider.fetchCartCount(); // Revert
+      }
     }
   }
 
@@ -274,14 +302,24 @@ class _CartPageState extends State<CartPage> {
             _loadUserAddress();
           }
         },
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color:
-                const Color(0xFF5a7335).withOpacity(0.08), // Light green tint
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF5a7335).withOpacity(0.2)),
+            color: isDark ? const Color(0xFF5a7335).withOpacity(0.12) : const Color(0xFF5a7335).withOpacity(0.06),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: const Color(0xFF5a7335).withOpacity(0.15),
+              width: 1.5,
+            ),
+            boxShadow: [
+              if (!isDark)
+              BoxShadow(
+                color: const Color(0xFF5a7335).withOpacity(0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Column(
             children: [
@@ -311,12 +349,14 @@ class _CartPageState extends State<CartPage> {
                         ),
                         const SizedBox(height: 4),
                         _isLoadingLocation
-                            ? SizedBox(
-                                height: 15,
-                                width: 15,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: theme.textTheme.bodyLarge?.color))
+                            ? const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 4),
+                                child: SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: GlobalLoader(size: 18),
+                                ),
+                              )
                             : Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -405,6 +445,7 @@ class _CartPageState extends State<CartPage> {
   }
 
   double get _deliveryFee {
+    if (_deliveryMethod == 'pickup') return 0.0;
     if (_deliveryCompanies.isEmpty || _selectedDeliveryId == null) return 0.0;
 
     final selectedCompany = _deliveryCompanies.firstWhere(
@@ -425,79 +466,97 @@ class _CartPageState extends State<CartPage> {
 
   Future<void> _handleCheckout() async {
     // 1. Validation
-    if (_userAddress == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text("Please select or add a delivery address.")),
-        );
+    if (_deliveryMethod == 'delivery') {
+      if (_userAddress == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text("Please select or add a delivery address.")),
+          );
+        }
+        return;
       }
-      return;
-    }
 
-    if (_selectedDeliveryId == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please select a delivery method.")),
-        );
+      if (_selectedDeliveryId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Please select a delivery method.")),
+          );
+        }
+        return;
       }
-      return;
     }
 
     // 2. Show Loading
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-          child: CircularProgressIndicator(color: Color(0xFF5a7335))),
+      builder: (context) => const GlobalLoader(isOverlay: true, message: 'Processing order...'),
     );
 
     try {
       // 3. Place Order
       final orderService = OrderService();
       final order = await orderService.placeOrder(
-        addressId: _userAddress!.id,
-        deliveryCompanyId: _selectedDeliveryId!,
+        deliveryMethod: _deliveryMethod,
+        addressId: _deliveryMethod == 'delivery' ? _userAddress!.id : null,
+        deliveryCompanyId: _deliveryMethod == 'delivery' ? _selectedDeliveryId! : null,
       );
 
       // 4. Create Payment
       final paymentService = PaymentService();
       final payment = await paymentService.createPayment(
         orderId: order!.id,
-        method: 'bakong', // Default to bakong for KHQR
+        method: _paymentMethod, 
       );
 
-      if (mounted) Navigator.pop(context); // Close loading
-
       if (payment != null) {
-        // 5. Navigate to Payment Page
+        // Close loading dialog before moving
         if (mounted) {
-          final success = await Navigator.push<bool>(
-            context,
-            MaterialPageRoute(
-              builder: (context) => PaymentPage(payment: payment),
-            ),
-          );
+          Navigator.of(context, rootNavigator: true).pop();
+        }
 
-          if (success == true && mounted) {
-            setState(() {
-              _cartItems.clear();
-              _fetchCartItems(); // Re-fetch to be sure
-              // Update global cart count
-              if (mounted) {
-                Provider.of<CartProvider>(context, listen: false)
-                    .fetchCartCount();
+        if (_paymentMethod == 'cash') {
+           // Cash is immediately successful
+           if (mounted) {
+             setState(() { _cartItems.clear(); });
+             Provider.of<CartProvider>(context, listen: false).updateCartLocally([]);
+             Provider.of<CartProvider>(context, listen: false).fetchCartCount();
+             
+             toastification.show(
+                context: context,
+                title: const Text("ការបញ្ជាទិញបានជោគជ័យ! (Order Successful)"),
+                type: ToastificationType.success,
+                style: ToastificationStyle.flat,
+                autoCloseDuration: const Duration(seconds: 4),
+             );
+           }
+        } else {
+            // 5. Navigate to Payment Page (bakong)
+            if (mounted) {
+              final success = await Navigator.push<bool>(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PaymentPage(payment: payment),
+                ),
+              );
+
+              if (success == true && mounted) {
+                // Success!
+                setState(() { _cartItems.clear(); });
+                Provider.of<CartProvider>(context, listen: false).updateCartLocally([]);
+                Provider.of<CartProvider>(context, listen: false).fetchCartCount();
               }
-            });
-          }
+            }
         }
       } else {
         throw Exception("Failed to generate payment details");
       }
     } catch (e) {
       if (mounted) {
-        // ScaffoldMessenger already handles showing errors in createPayment/placeOrder usually
-        // but let's be explicit here if they return null without printing
+        // Close loading dialog if it's still open
+        Navigator.of(context, rootNavigator: true).pop();
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Checkout Error: $e")),
         );
@@ -530,22 +589,31 @@ class _CartPageState extends State<CartPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 15),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: _buildSectionTitle("ជ្រើសរើសការដឹកជញ្ជូន (Delivery Method)"),
-          ),
-          _buildDeliverySelector(),
+
+          // New Delivery Method Selector (Delivery vs Pick Up)
+          _buildDeliveryTypeSelector(),
           const SizedBox(height: 5),
 
-          // 1. New "Friendly" Delivery Header
-          _buildDeliveryHeader(),
-
+          if (_deliveryMethod == 'delivery') ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _buildSectionTitle("ជ្រើសរើសការដឹកជញ្ជូន (Delivery Method)"),
+            ),
+            _buildDeliverySelector(),
+            const SizedBox(height: 5),
+            // 1. New "Friendly" Delivery Header
+            _buildDeliveryHeader(),
+          ],
           Expanded(
-            child: _isLoadingCart
-                ? const Center(child: CircularProgressIndicator())
+            child: RefreshIndicator(
+              onRefresh: _handleRefresh,
+              color: AppColors.primary,
+              child: _isLoadingCart
+                ? const Center(child: GlobalLoader(size: 40))
                 : _cartItems.isEmpty
                     ? _buildEmptyState()
                     : SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.only(
                             left: 20, right: 20, top: 10, bottom: 20),
                         child: Column(
@@ -568,6 +636,7 @@ class _CartPageState extends State<CartPage> {
                           ],
                         ),
                       ),
+            ),
           ),
 
           // Pinned Checkout Bar with Order Summary
@@ -589,6 +658,10 @@ class _CartPageState extends State<CartPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Payment Method Selector
+                  _buildPaymentTypeSelector(),
+                  const SizedBox(height: 15),
+
                   // Order Summary inside Bottom Sheet
                   // Collapsible Header
                   InkWell(
@@ -680,23 +753,34 @@ class _CartPageState extends State<CartPage> {
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(18),
                         ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            LanguageService().translate('checkout'),
-                            style: const TextStyle(
-                              fontFamily: 'Hanuman',
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF5a7335), Color(0xFF718F42)],
                           ),
-                          const SizedBox(width: 10),
-                          const Icon(Icons.arrow_forward_rounded, size: 20),
-                        ],
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Container(
+                          alignment: Alignment.center,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                LanguageService().translate('checkout'),
+                                style: const TextStyle(
+                                  fontFamily: 'Hanuman',
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              const Icon(Icons.arrow_forward_rounded, size: 20),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -730,6 +814,223 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
+  Widget _buildDeliveryTypeSelector() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+      child: Container(
+        height: 50,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: Colors.grey.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  if (_deliveryMethod != 'delivery') {
+                    setState(() => _deliveryMethod = 'delivery');
+                  }
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  decoration: BoxDecoration(
+                    gradient: _deliveryMethod == 'delivery' 
+                        ? const LinearGradient(colors: [Color(0xFF5a7335), Color(0xFF718F42)])
+                        : null,
+                    color: _deliveryMethod == 'delivery' ? null : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: _deliveryMethod == 'delivery' ? [
+                      BoxShadow(
+                        color: const Color(0xFF5a7335).withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      )
+                    ] : [],
+                  ),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.local_shipping_outlined, 
+                        size: 18,
+                        color: _deliveryMethod == 'delivery' ? Colors.white : Colors.grey[600],
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        LanguageService().translate("delivery") ?? "ដឹកជញ្ជូន",
+                        style: TextStyle(
+                          fontFamily: 'Hanuman',
+                          color: _deliveryMethod == 'delivery' ? Colors.white : Colors.grey[700],
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  if (_deliveryMethod != 'pickup') {
+                    setState(() => _deliveryMethod = 'pickup');
+                  }
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  decoration: BoxDecoration(
+                    gradient: _deliveryMethod == 'pickup' 
+                        ? const LinearGradient(colors: [Color(0xFF5a7335), Color(0xFF718F42)])
+                        : null,
+                    color: _deliveryMethod == 'pickup' ? null : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: _deliveryMethod == 'pickup' ? [
+                      BoxShadow(
+                        color: const Color(0xFF5a7335).withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      )
+                    ] : [],
+                  ),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.storefront_outlined, 
+                        size: 18,
+                        color: _deliveryMethod == 'pickup' ? Colors.white : Colors.grey[600],
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        LanguageService().translate("pickup") ?? "មកយកផ្ទាល់",
+                        style: TextStyle(
+                          fontFamily: 'Hanuman',
+                          color: _deliveryMethod == 'pickup' ? Colors.white : Colors.grey[700],
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentTypeSelector() {
+    return Container(
+      height: 50,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.grey.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                if (_paymentMethod != 'bakong') {
+                  setState(() => _paymentMethod = 'bakong');
+                }
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                decoration: BoxDecoration(
+                  gradient: _paymentMethod == 'bakong' 
+                      ? const LinearGradient(colors: [Color(0xFF5a7335), Color(0xFF718F42)])
+                      : null,
+                  color: _paymentMethod == 'bakong' ? null : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: _paymentMethod == 'bakong' ? [
+                    BoxShadow(
+                      color: const Color(0xFF5a7335).withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    )
+                  ] : [],
+                ),
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.qr_code_scanner, 
+                      size: 18,
+                      color: _paymentMethod == 'bakong' ? Colors.white : Colors.grey[600],
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      LanguageService().translate("pay_khqr") ?? "ស្កេន KHQR",
+                      style: TextStyle(
+                        fontFamily: 'Hanuman',
+                        color: _paymentMethod == 'bakong' ? Colors.white : Colors.grey[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                if (_paymentMethod != 'cash') {
+                  setState(() => _paymentMethod = 'cash');
+                }
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                decoration: BoxDecoration(
+                  gradient: _paymentMethod == 'cash' 
+                      ? const LinearGradient(colors: [Color(0xFF5a7335), Color(0xFF718F42)])
+                      : null,
+                  color: _paymentMethod == 'cash' ? null : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: _paymentMethod == 'cash' ? [
+                    BoxShadow(
+                      color: const Color(0xFF5a7335).withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    )
+                  ] : [],
+                ),
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.payments_outlined, 
+                      size: 18,
+                      color: _paymentMethod == 'cash' ? Colors.white : Colors.grey[600],
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      LanguageService().translate("pay_cash") ?? "សាច់ប្រាក់",
+                      style: TextStyle(
+                        fontFamily: 'Hanuman',
+                        color: _paymentMethod == 'cash' ? Colors.white : Colors.grey[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -752,16 +1053,40 @@ class _CartPageState extends State<CartPage> {
     if (_isLoadingDelivery) {
       return const Padding(
         padding: EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: GlobalLoader(size: 30)),
       );
     }
 
-    if (_deliveryCompanies.isEmpty) {
+    // Show error state with retry
+    if (_deliveryError != null || _deliveryCompanies.isEmpty) {
       return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        child: Text(
-          "No delivery options available.",
-          style: TextStyle(color: theme.textTheme.bodyMedium?.color),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_deliveryError != null)
+              Text(
+                'Error: $_deliveryError',
+                style: const TextStyle(color: Colors.red, fontSize: 12),
+              )
+            else
+              Text(
+                'No delivery options available.',
+                style: TextStyle(color: theme.textTheme.bodyMedium?.color),
+              ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: _fetchDeliveryCompanies,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('Retry'),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF5a7335),
+                padding: EdgeInsets.zero,
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -892,71 +1217,178 @@ class _CartPageState extends State<CartPage> {
       CartItemModel item, int index, ThemeData theme, bool isDark) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: isDark
+                ? Colors.black.withOpacity(0.2)
+                : Colors.black.withOpacity(0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: Row(
+      child: Stack(
         children: [
-          // Image
-          Container(
-            width: 70,
-            height: 90,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(10),
-              image: (item.bookImage != null && item.bookImage!.isNotEmpty)
-                  ? DecorationImage(
-                      image: CachedNetworkImageProvider(item.bookImage!),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
-            ),
-            child: (item.bookImage == null || item.bookImage!.isEmpty)
-                ? const Center(
-                    child: Icon(Icons.book, size: 30, color: Colors.grey))
-                : null,
-          ),
-          const SizedBox(width: 16),
-
-          // Details
-          Expanded(
-            child: Column(
+          // Main content row
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item.bookTitle ?? 'Unknown Book',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: theme.textTheme.bodyLarge?.color,
+                // Book Cover
+                Hero(
+                  tag: 'cart_book_${item.bookId}',
+                  child: Container(
+                    width: 82,
+                    height: 125,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[800] : Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.12),
+                          blurRadius: 8,
+                          offset: const Offset(2, 4),
+                        ),
+                      ],
+                      image: (item.bookImage != null && item.bookImage!.isNotEmpty)
+                          ? DecorationImage(
+                              image: CachedNetworkImageProvider(item.bookImage!),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                    ),
+                    child: (item.bookImage == null || item.bookImage!.isEmpty)
+                        ? const Center(
+                            child: Icon(Icons.book_rounded,
+                                size: 32, color: Colors.grey))
+                        : null,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  "\$${item.unitPrice.toStringAsFixed(2)}",
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Color(0xFF5a7335), // Green Price
+                const SizedBox(width: 14),
+
+                // Right side details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Padding for delete button
+                      const SizedBox(height: 4),
+
+                      // Title
+                      Text(
+                        item.bookTitle ?? 'Unknown Book',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          height: 1.3,
+                          color: theme.textTheme.bodyLarge?.color,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+
+                      // Author name row
+                      if (item.bookAuthor != null && item.bookAuthor!.isNotEmpty)
+                        Row(
+                          children: [
+                            Icon(Icons.person_outline_rounded,
+                                size: 13, color: Colors.grey[500]),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                item.bookAuthor!,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[500],
+                                  fontStyle: FontStyle.italic,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                      const SizedBox(height: 14),
+
+                      // Bottom row: Price + Quantity
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Price column
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '\$${item.unitPrice.toStringAsFixed(2)} / pc',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF5a7335), Color(0xFF7aad45)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '\$${(item.unitPrice * item.quantity).toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+                          // Quantity Control
+                          _buildQuantityControl(item, index),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
 
-          // Quantity
-          _buildQuantityControl(item, index),
+          // Delete button (top-right corner)
+          Positioned(
+            top: 8,
+            right: 10,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () => _removeItem(index, item),
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.delete_outline_rounded,
+                    size: 17,
+                    color: Colors.red.shade400,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1139,20 +1571,23 @@ class _CartPageState extends State<CartPage> {
 
   Widget _buildEmptyState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.shopping_cart_outlined, size: 80, color: Colors.grey[300]),
-          const SizedBox(height: 20),
-          Text(
-            LanguageService().translate('empty_cart'),
-            style: const TextStyle(
-              fontFamily: 'Hanuman',
-              fontSize: 18,
-              color: Colors.grey,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.shopping_cart_outlined, size: 80, color: Colors.grey[300]),
+            const SizedBox(height: 20),
+            Text(
+              LanguageService().translate('empty_cart'),
+              style: const TextStyle(
+                fontFamily: 'Hanuman',
+                fontSize: 18,
+                color: Colors.grey,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

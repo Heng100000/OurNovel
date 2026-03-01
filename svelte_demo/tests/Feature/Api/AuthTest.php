@@ -37,6 +37,7 @@ test('user can register with specific role', function () {
         'name' => 'Admin User',
         'email' => 'admin@example.com',
         'password' => 'password123',
+        'phone' => '011223344',
         'role' => 'admin',
     ]);
 
@@ -47,11 +48,11 @@ test('user can register with specific role', function () {
 test('user can login', function () {
     $user = User::factory()->create([
         'email' => 'login@example.com',
-        'password' => 'password', // Factory uses cast so it hashes
+        'password' => 'password',
     ]);
 
     $response = $this->postJson('/api/login', [
-        'email' => 'login@example.com',
+        'identifier' => 'login@example.com',
         'password' => 'password',
     ]);
 
@@ -68,7 +69,7 @@ test('authenticated user can logout', function () {
     $user = User::factory()->create();
     $token = $user->createToken('auth_token')->plainTextToken;
 
-    $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+    $response = $this->withHeader('Authorization', 'Bearer '.$token)
         ->postJson('/api/logout');
 
     $response->assertStatus(200)

@@ -11,7 +11,12 @@ class OrderItemObserver
      */
     public function created(OrderItem $orderItem): void
     {
-        $orderItem->book()->decrement('stock_qty', $orderItem->quantity);
+        // Stock is now reserved at the CART stage (CartItemObserver).
+        // When an OrderItem is created, it inherits that reservation.
+        // We only decrement here if it's NOT coming from a cart (e.g. Manual Admin Order).
+        if (! request()->has('from_cart') && ! request()->is('api/orders*')) {
+            $orderItem->book()->decrement('stock_qty', $orderItem->quantity);
+        }
     }
 
     /**

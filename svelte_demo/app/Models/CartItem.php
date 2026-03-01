@@ -11,10 +11,16 @@ class CartItem extends Model
     /** @use HasFactory<\Database\Factories\CartItemFactory> */
     use HasFactory;
 
+    /**
+     * Flag to prevent returning stock when clearing cart after a successful order.
+     */
+    public static bool $isClearingAfterOrder = false;
+
     protected $fillable = [
         'user_id',
         'book_id',
         'quantity',
+        'unit_price',
     ];
 
     public function user(): BelongsTo

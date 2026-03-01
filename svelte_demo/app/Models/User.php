@@ -7,11 +7,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasApiTokens;
+    use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -23,8 +24,13 @@ class User extends Authenticatable
         'email',
         'password',
         'phone',
+        'google_id',
+        'facebook_id',
+        'avatar',
+        'profile_photo',
         'telegram_chat_id',
         'role',
+        'bio',
         'status',
     ];
 
@@ -50,6 +56,13 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * The accessors to append to the model's array form.
+     *
+     * @var array
+     */
+    protected $appends = ['avatar_url', 'profile_photo_url'];
 
     public function devices(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
@@ -79,5 +92,63 @@ class User extends Authenticatable
     public function orders(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Order::class);
+    }
+
+    /**
+     * Get the full URL for the profile photo.
+     */
+    protected function profilePhotoUrl(): \Illuminate\Database\Eloquent\Casts\Attribute
+    {
+        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+            get: function () {
+                $value = $this->profile_photo;
+                if (!$value) {
+                    return null;
+                }
+
+                if (filter_var($value, FILTER_VALIDATE_URL)) {
+                    return $value;
+                }
+
+                return \Illuminate\Support\Facades\Storage::disk('supabase')->url($value);
+            }
+        );
+    }
+
+    /**
+     * Get the full URL for the avatar.
+     */
+    protected function avatarUrl(): \Illuminate\Database\Eloquent\Casts\Attribute
+    {
+        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+            get: function () {
+                $value = $this->avatar;
+                if (!$value) {
+                    return null;
+                }
+
+                if (filter_var($value, FILTER_VALIDATE_URL)) {
+                    return $value;
+                }
+
+                return \Illuminate\Support\Facades\Storage::disk('supabase')->url($value);
+            }
+        );
+    }
+
+    /**
+     * Get the avatar attribute (legacy compatibility).
+     */
+    public function getAvatarAttribute(?string $value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        if (filter_var($value, FILTER_VALIDATE_URL)) {
+            return $value;
+        }
+
+        return \Illuminate\Support\Facades\Storage::disk('supabase')->url($value);
     }
 }

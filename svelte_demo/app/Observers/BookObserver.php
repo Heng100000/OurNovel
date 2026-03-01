@@ -8,16 +8,15 @@ class BookObserver
 {
     public bool $afterCommit = true;
 
-    public function __construct(protected \App\Services\FcmService $fcmService)
-    {
-    }
+    public function __construct(protected \App\Services\FcmService $fcmService) {}
 
-    protected function notifyClients(): void
+    protected function notifyClients(string $action = 'updated'): void
     {
         $this->fcmService->sendToTopic('books_update', [
             'type' => 'book_updated',
             'timestamp' => (string) now()->timestamp,
         ]);
+        event(new \App\Events\RealTimeUpdate('Book', $action));
     }
 
     /**
@@ -25,7 +24,7 @@ class BookObserver
      */
     public function created(Book $book): void
     {
-        $this->notifyClients();
+        $this->notifyClients('created');
     }
 
     /**
@@ -33,7 +32,7 @@ class BookObserver
      */
     public function updated(Book $book): void
     {
-        $this->notifyClients();
+        $this->notifyClients('updated');
     }
 
     /**
@@ -41,7 +40,7 @@ class BookObserver
      */
     public function deleted(Book $book): void
     {
-        $this->notifyClients();
+        $this->notifyClients('deleted');
     }
 
     /**
@@ -49,7 +48,7 @@ class BookObserver
      */
     public function restored(Book $book): void
     {
-        $this->notifyClients();
+        $this->notifyClients('restored');
     }
 
     /**
@@ -57,6 +56,6 @@ class BookObserver
      */
     public function forceDeleted(Book $book): void
     {
-        $this->notifyClients();
+        $this->notifyClients('forceDeleted');
     }
 }

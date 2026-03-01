@@ -9,7 +9,8 @@ class Book {
   final String price;
   final String? oldPrice;
   final String? condition;
-  final int? stockQty;
+  int? stockQty;
+  int? initialStock;
   final String? status;
   final String? authorName;
   final List<BookImage>? images;
@@ -35,6 +36,7 @@ class Book {
     this.discountedPrice,
     this.condition,
     this.stockQty,
+    this.initialStock,
     this.status,
     this.authorName,
     this.images,
@@ -78,6 +80,7 @@ class Book {
       discountedPrice: discPrice,
       condition: json['condition']?.toString(),
       stockQty: parseNullableId(json['stock_qty']),
+      initialStock: parseNullableId(json['stock_qty']),
       status: json['status']?.toString(),
       authorName: json['author']?['name']?.toString(),
       averageRating: json['average_rating'] != null ? double.tryParse(json['average_rating'].toString()) : null,
@@ -105,19 +108,19 @@ class Book {
 }
 
 class BookImage {
-  final int id;
+  final int? id;
   final String imageUrl;
   final bool isPrimary;
 
   BookImage({
-    required this.id,
+    this.id,
     required this.imageUrl,
     required this.isPrimary,
   });
 
   factory BookImage.fromJson(Map<String, dynamic> json) {
     return BookImage(
-      id: json['id'],
+      id: json['id'] as int?,
       imageUrl: UrlUtil.formatImageUrl(json['image_url']),
       isPrimary: json['is_primary'] == 1 || json['is_primary'] == true,
     );

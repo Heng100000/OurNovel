@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../../core/constants/api_constants.dart';
+import '../../../core/constants/api_constants.dart';
 import 'invoice_model.dart';
 
 class InvoiceService {
@@ -15,13 +15,12 @@ class InvoiceService {
       }
 
       final response = await http.get(
-        // Assuming ApiConstants.invoices exists, I should check or just hardcode for now
         Uri.parse('${ApiConstants.baseUrl}/invoices'),
         headers: {
           'Accept': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);

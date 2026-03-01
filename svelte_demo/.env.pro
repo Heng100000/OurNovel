@@ -1,0 +1,100 @@
+APP_NAME=Laravel
+APP_ENV=production
+APP_KEY=base64:UjiL3j1wCCIAVk/45AfHqNw4XCU0Dwg8YCq0Y7K7Lac=
+APP_DEBUG=false
+APP_URL=https://your-render-app-name.onrender.com
+
+APP_LOCALE=en
+APP_FALLBACK_LOCALE=en
+APP_FAKER_LOCALE=en_US
+
+APP_MAINTENANCE_DRIVER=file
+# APP_MAINTENANCE_STORE=database
+
+BCRYPT_ROUNDS=12
+
+LOG_CHANNEL=stack
+LOG_STACK=single
+LOG_DEPRECATIONS_CHANNEL=null
+LOG_LEVEL=error
+
+DB_CONNECTION=pgsql
+DB_HOST=aws-1-ap-southeast-1.pooler.supabase.com
+DB_PORT=5432
+DB_DATABASE=my_book
+DB_USERNAME=postgres.ctkyoptgnsjpqnxmibyh
+DB_PASSWORD='Heng$1234$##'
+
+SESSION_DRIVER=database
+SESSION_LIFETIME=120
+SESSION_ENCRYPT=true
+SESSION_PATH=/
+SESSION_DOMAIN=null
+
+BROADCAST_CONNECTION=reverb
+FILESYSTEM_DISK=public
+QUEUE_CONNECTION=database
+
+CACHE_STORE=database
+# CACHE_PREFIX=
+
+# Redis configuration (uncomment if you add a Redis addon in Render)
+# REDIS_CLIENT=predis
+# REDIS_HOST=
+# REDIS_PASSWORD=
+# REDIS_PORT=6379
+# SESSION_DRIVER=redis
+# QUEUE_CONNECTION=redis
+# CACHE_STORE=redis
+
+MAIL_MAILER=log
+MAIL_SCHEME=null
+MAIL_HOST=127.0.0.1
+MAIL_PORT=2525
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
+MAIL_FROM_ADDRESS="hello@example.com"
+MAIL_FROM_NAME="${APP_NAME}"
+
+# Supabase Storage Details
+SUPABASE_ACCESS_KEY_ID=fe86b9bd7d66329e5a5a0100b8d2e26f
+SUPABASE_SECRET_ACCESS_KEY=f5a88ed354c2b81ac3cf2e9552848d96f1168f431b08148ebed25805a640836a
+SUPABASE_REGION=ap-southeast-1
+SUPABASE_BUCKET=book-client
+SUPABASE_URL=https://ctkyoptgnsjpqnxmibyh.supabase.co
+SUPABASE_ANON_KEY=sb_publishable_4waJHf7NbqrhBdtqEFAhBA_6_5MaNgC
+SUPABASE_SERVICE_ROLE_KEY=sb_secret_IxkMmjpdMOyqo-NnMpd5mg_AZuFIiSs
+SUPABASE_STORAGE_ENDPOINT=https://ctkyoptgnsjpqnxmibyh.storage.supabase.co/storage/v1/s3
+
+# Push Notification & Social Auth
+FCM_PROJECT_ID=book-store-3a2c5
+FCM_SERVICE_ACCOUNT_PATH=storage/app/firebase/serviceAccountKey.json
+
+TELEGRAM_BOT_TOKEN=7823635655:AAHdjtCpac_pfaE4czChcFryT51sXjQElGY
+
+BAKONG_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7ImlkIjoiZDg4MmE5ODE3OGY2NDk2NiJ9LCJpYXQiOjE3NzE3NzcyNzAsImV4cCI6MTc3OTU1MzI3MH0.HG40i3k47XBeqicfmbu-oMXgU-fHRcNkEnSh1LBIFhQ
+BAKONG_ACCOUNT_ID=linh_sokheng@aclb
+BAKONG_MERCHANT_NAME="BookStore"
+BAKONG_MERCHANT_CITY="Phnom Penh"
+
+GOOGLE_CLIENT_ID=838844969174-f2859nav3ruc3jber1an764tikbvfgul.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-5PWPo-FnSvccw_rrqjeCcNARNsr
+FACEBOOK_CLIENT_ID=2064729153994665
+FACEBOOK_CLIENT_SECRET=953a4a5074117bfd7892589f32193dea
+FACEBOOK_REDIRECT_URI=https://your-render-app-name.onrender.com/api/auth/facebook/callback
+
+# Reverb Configuration (Using Render's public URL for WebSockets)
+REVERB_APP_ID=639660
+REVERB_APP_KEY=pore5j1hjthluaf70rhh
+REVERB_APP_SECRET=urse7rwsup9siovelvvp
+REVERB_HOST="your-render-app-name.onrender.com"
+REVERB_PORT=443
+REVERB_SCHEME=https
+
+VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
+VITE_REVERB_HOST="${REVERB_HOST}"
+VITE_REVERB_PORT="${REVERB_PORT}"
+VITE_REVERB_SCHEME="${REVERB_SCHEME}"
+
+# Important to force HTTPS on Render
+FORCE_HTTPS=true

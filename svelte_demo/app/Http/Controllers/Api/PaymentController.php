@@ -58,28 +58,43 @@ class PaymentController extends Controller
         $user = $request->user();
 
         // If admin, allow paying for any order. Otherwise, only their own.
-        $query = $user->role === 'admin' 
-            ? Order::query() 
+        $query = $user->role === 'admin'
+            ? Order::query()
             : $user->orders();
 
         $order = $query->findOrFail($data['order_id']);
 
+        $startTime = microtime(true);
         $payment = Payment::create([
             'order_id' => $order->id,
-            'method'   => $data['method'],
-            'amount'   => $order->total_price,
-            'status'   => 'pending',
+            'method' => $data['method'],
+            'amount' => $order->total_price,
+            'status' => 'pending',
         ]);
 
         // Auto-generate KHQR if method is supported
         if (in_array($payment->method, ['bakong', 'aba', 'aceleda'])) {
+            Log::info('PaymentStore: Generating Bakong QR', ['elapsed' => microtime(true) - $startTime]);
             $result = $bakongService->generateQR($payment);
+            Log::info('PaymentStore: Bakong QR generated', ['elapsed' => microtime(true) - $startTime]);
             if ($result) {
                 $payment->updateQuietly(['txn_id' => $result['md5']]);
                 // Attach temporary property for Resource to use
                 $payment->qr_image_url = $bakongService->getQrImageUrl($result['qr']);
             }
+        } elseif ($payment->method === 'cash') {
+            Log::info('PaymentStore: Handling Cash Payment', ['elapsed' => microtime(true) - $startTime]);
+            // Cash payments are immediately successful in the app flow.
+            $payment->update(['status' => 'paid']);
+            $order->update(['status' => 'paid']);
+
+            // Clear the cart - set flag to prevent stock return
+            \App\Models\CartItem::$isClearingAfterOrder = true;
+            $user->cartItems()->delete();
+            \App\Models\CartItem::$isClearingAfterOrder = false;
         }
+
+        Log::info('PaymentStore: Completing request', ['elapsed' => microtime(true) - $startTime]);
 
         return (new PaymentResource($payment->load('order')))
             ->response()
@@ -126,8 +141,14 @@ class PaymentController extends Controller
         if ($isPaid) {
             $payment->update(['status' => 'paid']);
 
-            // Also update the associated order status
-            $payment->order()->update(['status' => 'paid']);
+            // Get the order instance and update it to trigger observers (e.g., TelegramInvoice)
+            $order = clone $payment->order;
+            $order->update(['status' => 'paid']);
+
+            // Clear the user's cart now that payment is successful
+            \App\Models\CartItem::$isClearingAfterOrder = true;
+            $order->user->cartItems()->delete();
+            \App\Models\CartItem::$isClearingAfterOrder = false;
 
             return response()->json(['paid' => true, 'status' => 'paid']);
         }

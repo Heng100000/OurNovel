@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
-import '../widget/home_screen.dart';
+import '../core/widgets/global_loader.dart';
 import '../core/models/book.dart' as model;
 import '../core/models/author.dart';
 import '../core/models/category.dart';
@@ -18,9 +17,13 @@ import '../features/home/presentation/pages/book_description_page.dart';
 import '../core/constants/app_colors.dart';
 import '../features/scanner/modern_scanner_page.dart';
 import 'package:toastification/toastification.dart';
+import '../core/services/realtime_service.dart';
+import '../theme/theme_service.dart';
+import '../l10n/language_service.dart';
 
 class BookStorePage extends StatefulWidget {
-  const BookStorePage({super.key});
+  final int? initialAuthorId;
+  const BookStorePage({super.key, this.initialAuthorId});
 
   @override
   State<BookStorePage> createState() => _BookStorePageState();
@@ -46,16 +49,33 @@ class _BookStorePageState extends State<BookStorePage> {
   @override
   void initState() {
     super.initState();
+    _selectedAuthorId = widget.initialAuthorId;
     _loadData();
+    RealtimeService().addListener(_onRealtimeUpdate);
+  }
+
+  void _onRealtimeUpdate() {
+    if (mounted) {
+      _bookService.getBooks().then((books) {
+        if (mounted) setState(() => _allBooks = books);
+      });
+      _authorService.getAllAuthors().then((authors) {
+        if (mounted) setState(() => _authors = authors);
+      });
+      _categoryService.getAllCategories().then((categories) {
+        if (mounted) setState(() => _categories = categories);
+      });
+    }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    RealtimeService().removeListener(_onRealtimeUpdate);
     super.dispose();
   }
 
-  void _openScanner() {
+  void _openScanner(LanguageService langService) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => ModernScannerPage(
@@ -90,13 +110,15 @@ class _BookStorePageState extends State<BookStorePage> {
             if (matchedBook != null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Found: ${matchedBook.title} by ${matchedBook.authorName ?? "Unknown"}'),
+                  content: Text(langService.translate('found_book')
+                      .replaceFirst('%s', matchedBook.title)
+                      .replaceFirst('%s', matchedBook.authorName ?? "Unknown")),
                   backgroundColor: AppColors.primary,
                 ),
               );
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Scanned ISBN: $code (No match found)')),
+                SnackBar(content: Text(langService.translate('scanned_isbn_no_match').replaceFirst('%s', code))),
               );
             }
           },
@@ -128,38 +150,21 @@ class _BookStorePageState extends State<BookStorePage> {
           _authors = authorsList;
           _categories = categoriesList;
           
-          // Default to first author if none selected and authors available
           if (_selectedAuthorId == null && _authors.isNotEmpty) {
             _selectedAuthorId = _authors[0].id;
           }
           
           _isLoading = false;
         });
-
-        // Debug SnackBar
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Loaded ${_allBooks.length} books. Selected Author: $_selectedAuthorId'),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-        
-        print('Loaded ${_allBooks.length} books, ${_authors.length} authors, ${_categories.length} categories');
       }
     } catch (e) {
-      print('Error in _loadData: $e');
+      debugPrint('Error in _loadData: $e');
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to load data')),
-        );
       }
     }
   }
 
-  // Get author by ID
   Author? get _selectedAuthor {
     if (_selectedAuthorId == null || _authors.isEmpty) return null;
     try {
@@ -169,31 +174,30 @@ class _BookStorePageState extends State<BookStorePage> {
     }
   }
 
-  // Show all categories as requested
   List<Category> get _filteredCategories => _categories;
 
   List<model.Book> get _filteredBooks {
     if (_selectedAuthorId == null) return [];
     
-    // 1. Filter by selected author
     final filteredByAuthor = _allBooks.where((book) => book.authorId == _selectedAuthorId).toList();
     
-    // 2. Filter by category if one is selected (index 0 is "All")
-    if (_selectedCategoryIndex == 0) return filteredByAuthor;
-    
-    final currentFilteredCategories = _filteredCategories;
-    if (_selectedCategoryIndex > currentFilteredCategories.length) {
-      return filteredByAuthor;
+    List<model.Book> result;
+    if (_selectedCategoryIndex == 0) {
+      result = filteredByAuthor;
+    } else {
+      final currentFilteredCategories = _filteredCategories;
+      if (_selectedCategoryIndex > currentFilteredCategories.length) {
+        result = filteredByAuthor;
+      } else {
+        final categoryId = currentFilteredCategories[_selectedCategoryIndex - 1].id;
+        result = filteredByAuthor.where((book) => book.categoryId == categoryId).toList();
+      }
     }
-    
-    final categoryId = currentFilteredCategories[_selectedCategoryIndex - 1].id;
-    final filteredByCategory = filteredByAuthor.where((book) => book.categoryId == categoryId).toList();
 
-    // 3. Filter by search query (Title, Author, or ISBN)
-    if (_searchQuery.isEmpty) return filteredByCategory;
+    if (_searchQuery.isEmpty) return result;
 
     final query = _searchQuery.toLowerCase();
-    return filteredByCategory.where((book) {
+    return result.where((book) {
       final titleMatch = book.title.toLowerCase().contains(query);
       final authorMatch = book.authorName?.toLowerCase().contains(query) ?? false;
       final isbnMatch = book.isbn?.toLowerCase().contains(query) ?? false;
@@ -203,98 +207,103 @@ class _BookStorePageState extends State<BookStorePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      drawer: const SideMenuDrawer(),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-        : RefreshIndicator(
-            onRefresh: _loadData,
-            color: AppColors.primary,
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                // 1. Sticky AppBar (Pinned)
-                _buildSliverHeader(context),
-                
-                // 2. Author Scroll (Scrolls away)
-                SliverToBoxAdapter(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 20),
-                      _buildAuthorScroll(),
-                      const SizedBox(height: 5), // Reduced margin
-                    ],
-                  ),
-                ),
-                
-                // 3. Selected Author Banner (Scrolls away)
-                SliverToBoxAdapter(
-                  child: Column(
-                    children: [
-                      _buildSelectedAuthorSection(),
-                      const SizedBox(height: 25), // Margin before category tabs
-                    ],
-                  ),
-                ),
+    return Consumer2<ThemeService, LanguageService>(
+      builder: (context, themeService, langService, child) {
+        final isDark = themeService.isDarkMode;
+        final bgColor = isDark ? const Color(0xFF121212) : const Color(0xFFF9FAFB);
 
-                // 5. Sticky Category Tabs (Pinned)
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _CategoryHeaderDelegate(
-                    child: Container(
-                      color: const Color(0xFFF9FAFB),
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _buildCategoryTabs(),
-                    ),
+        return Scaffold(
+          backgroundColor: bgColor,
+          drawer: const SideMenuDrawer(),
+          body: _isLoading 
+            ? const Center(child: GlobalLoader(size: 80))
+            : RefreshIndicator(
+                onRefresh: _loadData,
+                color: AppColors.primary,
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
                   ),
-                ),
-                
-                // 6. Book List Section Title
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildSectionTitle("បញ្ជីសៀវភៅ", horizontalPadding: 0),
-                        Text(
-                          "${_filteredBooks.length} / ${_allBooks.length} titles",
-                          style: TextStyle(color: Colors.grey[500], fontSize: 13),
-                        ),
-                      ],
+                  slivers: [
+                    _buildSliverHeader(context, isDark, langService),
+                    
+                    SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 20),
+                          _buildAuthorScroll(isDark),
+                          const SizedBox(height: 5),
+                        ],
+                      ),
                     ),
-                  ),
-                ),
-                
-                // 7. Book Grid
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  sliver: _filteredBooks.isEmpty 
-                    ? SliverToBoxAdapter(child: _buildEmptyState())
-                    : SliverGrid(
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          childAspectRatio: 0.72,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 12,
-                        ),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) => _buildBookCard(_filteredBooks[index]),
-                          childCount: _filteredBooks.length,
+                    
+                    SliverToBoxAdapter(
+                      child: Column(
+                        children: [
+                          _buildSelectedAuthorSection(isDark, langService),
+                          const SizedBox(height: 25),
+                        ],
+                      ),
+                    ),
+
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _CategoryHeaderDelegate(
+                        child: Container(
+                          color: bgColor,
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _buildCategoryTabs(isDark, langService),
                         ),
                       ),
+                    ),
+                    
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildSectionTitle(langService.translate('book_list'), isDark, horizontalPadding: 0),
+                            Text(
+                              langService.translate('total_titles')
+                                  .replaceFirst('%s', _filteredBooks.length.toString())
+                                  .replaceFirst('%s', _allBooks.length.toString()),
+                              style: TextStyle(color: isDark ? Colors.white24 : Colors.grey[500], fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      sliver: _filteredBooks.isEmpty 
+                        ? SliverToBoxAdapter(child: _buildEmptyState(isDark, langService))
+                        : SliverGrid(
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              childAspectRatio: 0.52, // Increased again to further reduce image height
+                        crossAxisSpacing: 8,
+                              mainAxisSpacing: 12,
+                            ),
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) => _buildBookCard(_filteredBooks[index], isDark, langService),
+                              childCount: _filteredBooks.length,
+                            ),
+                          ),
+                    ),
+                    
+                    const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                  ],
                 ),
-                
-                const SliverToBoxAdapter(child: SizedBox(height: 100)),
-              ],
-            ),
-          ),
+              ),
+        );
+      },
     );
   }
 
-  Widget _buildSliverHeader(BuildContext context) {
+  Widget _buildSliverHeader(BuildContext context, bool isDark, LanguageService langService) {
     return SliverAppBar(
       pinned: true,
       expandedHeight: 180,
@@ -308,20 +317,22 @@ class _BookStorePageState extends State<BookStorePage> {
         ),
       ),
       flexibleSpace: FlexibleSpaceBar(
-        background: _buildPremiumHeaderContent(context),
+        background: _buildPremiumHeaderContent(context, isDark, langService),
       ),
     );
   }
 
-  Widget _buildPremiumHeaderContent(BuildContext context) {
+  Widget _buildPremiumHeaderContent(BuildContext context, bool isDark, LanguageService langService) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppColors.primary, Color(0xFF4A5D2B)],
+          colors: isDark 
+              ? [const Color(0xFF1A2410), const Color(0xFF2D3A1D)] 
+              : [AppColors.primary, const Color(0xFF4A5D2B)],
         ),
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(35),
           bottomRight: Radius.circular(35),
         ),
@@ -348,13 +359,12 @@ class _BookStorePageState extends State<BookStorePage> {
                     onPressed: () => Scaffold.of(context).openDrawer(),
                   ),
                 ),
-                const Text(
-                  "សៀវភៅក្នុងហាង",
-                  style: TextStyle(
+                Text(
+                  langService.translate('book_store_title'),
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
-                    fontFamily: 'Hanuman',
                   ),
                 ),
                 Consumer<CartProvider>(
@@ -421,11 +431,11 @@ class _BookStorePageState extends State<BookStorePage> {
             child: Container(
               height: 50,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? const Color(0xFF2A2A2A) : Colors.white,
                 borderRadius: BorderRadius.circular(15),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withOpacity(isDark ? 0.3 : 0.1),
                     blurRadius: 10,
                     offset: const Offset(0, 5),
                   ),
@@ -434,13 +444,14 @@ class _BookStorePageState extends State<BookStorePage> {
               child: TextField(
                 controller: _searchController,
                 onChanged: (val) => setState(() => _searchQuery = val),
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
                 decoration: InputDecoration(
-                  hintText: "ស្វែងរកសៀវភៅ ឬអ្នកនិពន្ធ...",
-                  hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
-                  prefixIcon: const Icon(Icons.search, color: AppColors.primary),
+                  hintText: langService.translate('search_books_authors'),
+                  hintStyle: TextStyle(color: isDark ? Colors.white24 : Colors.grey, fontSize: 14),
+                  prefixIcon: Icon(Icons.search, color: isDark ? AppColors.primary : AppColors.primary),
                   suffixIcon: IconButton(
-                    icon: const Icon(Icons.barcode_reader, color: AppColors.primary),
-                    onPressed: _openScanner,
+                    icon: Icon(Icons.barcode_reader, color: isDark ? AppColors.primary : AppColors.primary),
+                    onPressed: () => _openScanner(langService),
                   ),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 15),
@@ -453,7 +464,7 @@ class _BookStorePageState extends State<BookStorePage> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(bool isDark, LanguageService langService) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.only(top: 60, bottom: 40),
@@ -463,30 +474,29 @@ class _BookStorePageState extends State<BookStorePage> {
             Container(
               padding: const EdgeInsets.all(25),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.menu_book_rounded, size: 70, color: Colors.grey[300]),
+              child: Icon(Icons.menu_book_rounded, size: 70, color: isDark ? Colors.white10 : Colors.grey[300]),
             ),
             const SizedBox(height: 25),
-            const Text(
-              "មិនមានសៀវភៅនៅឡើយទេ",
+            Text(
+              langService.translate('no_books_yet'),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                fontFamily: 'Hanuman',
-                color: Color(0xFF374151),
+                color: isDark ? Colors.white70 : const Color(0xFF374151),
               ),
             ),
             const SizedBox(height: 10),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),
               child: Text(
-                "អ្នកនិពន្ធនេះមិនទាន់មានសៀវភៅនៅក្នុងប្រភេទនេះនៅឡើយទេ។ សូមរង់ចាំការ Update ឆាប់ៗ!",
+                langService.translate('author_no_books_desc'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey[500],
+                  color: isDark ? Colors.white38 : Colors.grey[500],
                   height: 1.5,
                 ),
               ),
@@ -497,23 +507,21 @@ class _BookStorePageState extends State<BookStorePage> {
     );
   }
 
-
-  Widget _buildSectionTitle(String title, {double horizontalPadding = 20}) {
+  Widget _buildSectionTitle(String title, bool isDark, {double horizontalPadding = 20}) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 19,
           fontWeight: FontWeight.bold,
-          fontFamily: 'Hanuman',
-          color: Color(0xFF1F2937),
+          color: isDark ? Colors.white : const Color(0xFF1F2937),
         ),
       ),
     );
   }
 
-  Widget _buildAuthorScroll() {
+  Widget _buildAuthorScroll(bool isDark) {
     return SizedBox(
       height: 100,
       child: ListView.builder(
@@ -521,19 +529,19 @@ class _BookStorePageState extends State<BookStorePage> {
         scrollDirection: Axis.horizontal,
         itemCount: _authors.length,
         itemBuilder: (context, index) {
-          return _buildAuthorItem(_authors[index], _authors[index].name);
+          return _buildAuthorItem(_authors[index], _authors[index].name, isDark);
         },
       ),
     );
   }
 
-  Widget _buildAuthorItem(Author author, String name) {
+  Widget _buildAuthorItem(Author author, String name, bool isDark) {
     bool isSelected = _selectedAuthorId == author.id;
     return GestureDetector(
       onTap: () {
         setState(() {
           _selectedAuthorId = author.id;
-          _selectedCategoryIndex = 0; // Reset category filter when author changes
+          _selectedCategoryIndex = 0;
         });
       },
       child: Container(
@@ -551,7 +559,7 @@ class _BookStorePageState extends State<BookStorePage> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
@@ -562,7 +570,10 @@ class _BookStorePageState extends State<BookStorePage> {
                   ? CachedNetworkImage(
                       imageUrl: author.profileImageUrl!,
                       fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(color: Colors.grey[200]),
+                      placeholder: (context, url) => Container(
+                        color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[200],
+                        child: const Center(child: GlobalLoader(size: 20)),
+                      ),
                       errorWidget: (context, url, error) => _buildDefaultAvatar(name),
                     )
                   : _buildDefaultAvatar(name),
@@ -574,7 +585,7 @@ class _BookStorePageState extends State<BookStorePage> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? AppColors.primary : Colors.black87,
+                color: isSelected ? AppColors.primary : (isDark ? Colors.white70 : Colors.black87),
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -585,9 +596,11 @@ class _BookStorePageState extends State<BookStorePage> {
     );
   }
 
-  Widget _buildSelectedAuthorSection() {
+  Widget _buildSelectedAuthorSection(bool isDark, LanguageService langService) {
     final author = _selectedAuthor;
     if (author == null) return const SizedBox.shrink();
+
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -595,11 +608,11 @@ class _BookStorePageState extends State<BookStorePage> {
         width: double.infinity,
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cardColor,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
               blurRadius: 15,
               offset: const Offset(0, 5),
             ),
@@ -607,7 +620,6 @@ class _BookStorePageState extends State<BookStorePage> {
         ),
         child: Row(
           children: [
-            // Square Image
             Container(
               width: 90,
               height: 90,
@@ -615,7 +627,7 @@ class _BookStorePageState extends State<BookStorePage> {
                 borderRadius: BorderRadius.circular(15),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withOpacity(isDark ? 0.3 : 0.1),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
@@ -627,7 +639,10 @@ class _BookStorePageState extends State<BookStorePage> {
                   ? CachedNetworkImage(
                       imageUrl: author.profileImageUrl!,
                       fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(color: Colors.grey[100]),
+                      placeholder: (context, url) => Container(
+                        color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
+                        child: const Center(child: GlobalLoader(size: 20)),
+                      ),
                       errorWidget: (context, url, error) => _buildDefaultAvatar(author.name),
                     )
                   : _buildDefaultAvatar(author.name),
@@ -640,18 +655,18 @@ class _BookStorePageState extends State<BookStorePage> {
                 children: [
                   Text(
                     author.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF111827),
+                      color: isDark ? Colors.white : const Color(0xFF111827),
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    author.bio ?? "អ្នកនិពន្ធល្បីប្រចាំហាង សៀវភៅមានគុណភាព និងចំណេះដឹង។",
+                    author.bio ?? (langService.currentLanguage == 'kh' ? "អ្នកនិពន្ធល្បីប្រចាំហាង សៀវភៅមានគុណភាព និងចំណេះដឹង។" : "Famous author of our store, providing quality books and knowledge."),
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.grey[600],
+                      color: isDark ? Colors.white38 : Colors.grey[600],
                       height: 1.4,
                     ),
                     maxLines: 2,
@@ -661,12 +676,12 @@ class _BookStorePageState extends State<BookStorePage> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
+                      color: AppColors.primary.withOpacity(isDark ? 0.2 : 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Text(
-                      "អ្នកនិពន្ធឆ្នើម",
-                      style: TextStyle(
+                    child: Text(
+                      langService.translate('featured_author'),
+                      style: const TextStyle(
                         color: AppColors.primary,
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -694,7 +709,7 @@ class _BookStorePageState extends State<BookStorePage> {
     );
   }
 
-  Widget _buildCategoryTabs() {
+  Widget _buildCategoryTabs(bool isDark, LanguageService langService) {
     final filteredCats = _filteredCategories;
     
     return SizedBox(
@@ -705,15 +720,18 @@ class _BookStorePageState extends State<BookStorePage> {
         itemCount: filteredCats.length + 1,
         itemBuilder: (context, index) {
           bool isSelected = _selectedCategoryIndex == index;
-          String name = index == 0 ? "All" : filteredCats[index - 1].name;
+          String name = index == 0 ? langService.translate('all') : filteredCats[index - 1].name;
           
+          final itemBg = isDark ? (isSelected ? AppColors.primary : const Color(0xFF1A1A1A)) : (isSelected ? AppColors.primary : Colors.white);
+          final itemText = isSelected ? Colors.white : (isDark ? Colors.white38 : Colors.grey[600]);
+
           return GestureDetector(
             onTap: () => setState(() => _selectedCategoryIndex = index),
             child: Container(
               margin: const EdgeInsets.only(right: 12),
               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : Colors.white,
+                color: itemBg,
                 borderRadius: BorderRadius.circular(15),
                 boxShadow: isSelected ? [
                   BoxShadow(
@@ -723,14 +741,14 @@ class _BookStorePageState extends State<BookStorePage> {
                   )
                 ] : [],
                 border: Border.all(
-                  color: isSelected ? Colors.transparent : Colors.grey.shade200,
+                  color: isSelected ? Colors.transparent : (isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade200),
                 ),
               ),
               child: Center(
                 child: Text(
                   name,
                   style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.grey[600],
+                    color: itemText,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
@@ -744,7 +762,10 @@ class _BookStorePageState extends State<BookStorePage> {
   }
 
 
-  Widget _buildBookCard(model.Book book) {
+  Widget _buildBookCard(model.Book book, bool isDark, LanguageService langService) {
+    final cardBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final titleColor = isDark ? Colors.white : Colors.black;
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -756,13 +777,13 @@ class _BookStorePageState extends State<BookStorePage> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          color: cardBg,
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withOpacity(isDark ? 0.2 : 0.06),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
@@ -773,100 +794,158 @@ class _BookStorePageState extends State<BookStorePage> {
               child: Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                     child: CachedNetworkImage(
                       imageUrl: book.displayImage,
                       width: double.infinity,
                       height: double.infinity,
                       fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(color: Colors.grey[100]),
+                      placeholder: (context, url) => Container(
+                        color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
+                        child: const Center(child: GlobalLoader(size: 20)),
+                      ),
                       errorWidget: (context, url, error) => Container(
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.book, color: Colors.grey, size: 20),
+                        color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey[200],
+                        child: Icon(Icons.book, color: isDark ? Colors.white10 : Colors.grey, size: 20),
                       ),
                     ),
                   ),
-                  Positioned(
-                    top: 6,
-                    right: 6,
-                    child: Consumer<WishlistProvider>(
-                      builder: (context, wishlist, _) {
-                        bool isFav = wishlist.isWishlisted(book.id);
-                        return GestureDetector(
-                          onTap: () => wishlist.toggleWishlist(book),
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              isFav ? Icons.favorite : Icons.favorite_border,
-                              color: isFav ? Colors.red : Colors.grey,
-                              size: 12,
-                            ),
+                  if (book.condition != null && book.condition!.isNotEmpty)
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _getConditionColor(book.condition!),
+                          borderRadius: const BorderRadius.only(
+                            topRight: Radius.circular(20),
+                            bottomLeft: Radius.circular(10),
                           ),
-                        );
-                      },
+                        ),
+                        child: Text(
+                          book.condition!,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                  if (book.isPopular || (book.condition?.toLowerCase() == 'popular'))
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: Consumer<WishlistProvider>(
+                        builder: (context, wishlist, _) {
+                          bool isFav = wishlist.isWishlisted(book.id);
+                          return GestureDetector(
+                            onTap: () => wishlist.toggleWishlist(book),
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.9),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                color: isFav ? Colors.red : Colors.grey,
+                                size: 16,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                 ],
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     book.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: isDark ? Colors.white : const Color(0xFF2E7D32),
+                      height: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    book.authorName ?? 'Unknown Author',
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 5),
+                  _buildStaticStars(book),
+                  const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             "\$${book.price}",
                             style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                              color: AppColors.primary,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 14,
+                              color: Color(0xFF5A7336),
                             ),
                           ),
-                          if (book.oldPrice != null) ...[
-                            const SizedBox(width: 4),
+                          if (book.oldPrice != null) 
                             Text(
                               "\$${book.oldPrice}",
-                              style: TextStyle(
-                                fontSize: 9,
-                                color: Colors.grey[400],
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
                                 decoration: TextDecoration.lineThrough,
                               ),
                             ),
-                          ],
                         ],
                       ),
                       GestureDetector(
-                        onTap: () => _addToCart(book),
-                        child: _addingToCartStatus[book.id] == true
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 1.5,
-                                  color: AppColors.primary,
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => _addToCart(book, langService),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [AppColors.primaryLight, AppColors.primary],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            shape: BoxShape.circle,
+                          ),
+                          child: _addingToCartStatus[book.id] == true
+                              ? const Padding(
+                                  padding: EdgeInsets.all(8.0),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.add,
+                                  color: Colors.white,
+                                  size: 20,
                                 ),
-                              )
-                            : Icon(
-                                Icons.add_shopping_cart,
-                                color: AppColors.primary.withOpacity(0.8),
-                                size: 14,
-                              ),
+                        ),
                       ),
                     ],
                   ),
@@ -879,7 +958,7 @@ class _BookStorePageState extends State<BookStorePage> {
     );
   }
 
-  Future<void> _addToCart(model.Book book) async {
+  Future<void> _addToCart(model.Book book, LanguageService langService) async {
     if (_addingToCartStatus[book.id] == true) return;
 
     setState(() {
@@ -894,7 +973,6 @@ class _BookStorePageState extends State<BookStorePage> {
       });
 
       if (error == null) {
-        // Update global cart count
         if (mounted) {
           Provider.of<CartProvider>(context, listen: false).fetchCartCount();
         }
@@ -903,8 +981,8 @@ class _BookStorePageState extends State<BookStorePage> {
           context: context,
           type: ToastificationType.success,
           style: ToastificationStyle.flatColored,
-          title: const Text('ជោគជ័យ (Success)'),
-          description: Text('បានបន្ថែម "${book.title}" ទៅក្នុងកន្ត្រក'),
+          title: Text(langService.translate('success')),
+          description: Text(langService.translate('added_to_cart').replaceFirst('%s', book.title)),
           autoCloseDuration: const Duration(seconds: 3),
           alignment: Alignment.topRight,
         );
@@ -913,13 +991,45 @@ class _BookStorePageState extends State<BookStorePage> {
           context: context,
           type: ToastificationType.error,
           style: ToastificationStyle.flatColored,
-          title: const Text('កំហុស (Error)'),
+          title: const Text('Error'),
           description: Text(error),
           autoCloseDuration: const Duration(seconds: 4),
           alignment: Alignment.topRight,
         );
       }
     }
+  }
+
+  Color _getConditionColor(String condition) {
+    switch (condition.toLowerCase()) {
+      case 'new':
+        return Colors.green;
+      case 'popular':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Widget _buildStaticStars(model.Book book, {double size = 12}) {
+    final double ratingToDisplay = (book.userRating != null)
+        ? book.userRating!.toDouble()
+        : (book.averageRating ?? 0.0);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (index) {
+        final isFilled = index < ratingToDisplay;
+        return Padding(
+          padding: const EdgeInsets.only(right: 2),
+          child: Icon(
+            isFilled ? Icons.star_rounded : Icons.star_border_rounded,
+            color: isFilled ? Colors.amber : Colors.grey.shade300,
+            size: size,
+          ),
+        );
+      }),
+    );
   }
 }
 

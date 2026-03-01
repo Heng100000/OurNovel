@@ -20,6 +20,15 @@ class NewsAnnouncementsTable
                 TextColumn::make('title')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('type_news')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'Sale' => 'danger',
+                        'Promotion' => 'warning',
+                        'General' => 'info',
+                        default => 'gray',
+                    })
+                    ->sortable(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

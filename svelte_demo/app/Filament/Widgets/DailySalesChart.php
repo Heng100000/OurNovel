@@ -16,16 +16,22 @@ class DailySalesChart extends ChartWidget
 
     protected function getData(): array
     {
-        $days = collect(range(6, 0))->map(function ($day) {
+        $startDate = now()->subDays(6)->startOfDay();
+
+        // Optimized: Fetch all revenue for the last 7 days in ONE query
+        $revenueData = \App\Models\Payment::where('status', 'paid')
+            ->where('created_at', '>=', $startDate)
+            ->selectRaw('DATE(created_at) as date, SUM(amount) as revenue')
+            ->groupBy('date')
+            ->pluck('revenue', 'date');
+
+        $days = collect(range(6, 0))->map(function ($day) use ($revenueData) {
             $date = now()->subDays($day);
-            
-            $revenue = \App\Models\Payment::whereDate('created_at', $date)
-                ->where('status', 'paid')
-                ->sum('amount');
-                
+            $dateString = $date->format('Y-m-d');
+
             return [
                 'label' => $date->format('D, M j'),
-                'revenue' => (float) $revenue,
+                'revenue' => (float) $revenueData->get($dateString, 0),
             ];
         });
 

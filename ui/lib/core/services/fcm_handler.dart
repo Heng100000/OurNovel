@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../constants/api_constants.dart';
 import '../../features/notifications/data/notification_provider.dart';
 
 class FcmHandler {
@@ -24,6 +28,17 @@ class FcmHandler {
     // Subscribe to a global topic for book updates
     await messaging.subscribeToTopic('books_update');
 
+    // Get and send the initial token
+    String? token = await messaging.getToken();
+    if (token != null) {
+      await _sendTokenToServer(token);
+    }
+
+    // Listen to token refreshes
+    messaging.onTokenRefresh.listen((newToken) {
+      _sendTokenToServer(newToken);
+    });
+
     // Foreground Listeners
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint(
@@ -43,8 +58,12 @@ class FcmHandler {
         // Sync notification data with backend
         Future.delayed(const Duration(milliseconds: 500), () {
           if (context.mounted) {
-            Provider.of<NotificationProvider>(context, listen: false)
-                .fetchUnreadCount();
+            final provider = Provider.of<NotificationProvider>(context, listen: false);
+            provider.showNotificationToast(
+              context,
+              message.notification?.title ?? 'New Notification',
+              message.notification?.body ?? '',
+            );
           }
         });
       }
@@ -57,5 +76,38 @@ class FcmHandler {
         Navigator.pushNamed(context, '/notifications');
       }
     });
+  }
+
+  static Future<void> _sendTokenToServer(String token) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? apiToken = prefs.getString('token');
+
+      if (apiToken == null) {
+        debugPrint('FCM: No user token found, skipping device registration.');
+        return;
+      }
+
+      final response = await http.post(
+        Uri.parse(ApiConstants.devices),
+        headers: {
+          'Authorization': 'Bearer $apiToken',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode({
+          'fcm_token': token,
+          'device_type': 'android', // You might want to detect this dynamically
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('FCM: Token registered on server successfully.');
+      } else {
+        debugPrint('FCM: Failed to register token. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('FCM Error sending token to server: $e');
+    }
   }
 }

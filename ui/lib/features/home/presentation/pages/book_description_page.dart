@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/widgets/global_loader.dart';
 import '../../../../core/models/book.dart';
 import '../../../cart/data/cart_provider.dart';
 import '../../../cart/data/cart_service.dart';
@@ -108,7 +109,10 @@ class _BookDescriptionPageState extends State<BookDescriptionPage> {
     // Use local state for real-time updates
     final displayRating = _currentAverageRating;
     final displayLanguage = book.language ?? "Khmer";
-    final displayStock = book.stockQty ?? 0;
+    
+    int cartQty = context.watch<CartProvider>().getQuantity(book.id);
+    int displayStock = (book.stockQty ?? 0) - cartQty;
+    if (displayStock < 0) displayStock = 0;
 
     final List<BookImage> allImages = book.images ?? [];
     if (allImages.isEmpty && book.displayImage.isNotEmpty) {
@@ -226,9 +230,9 @@ class _BookDescriptionPageState extends State<BookDescriptionPage> {
               ),
               if (_isLoadingBook)
                 const SliverToBoxAdapter(
-                  child: LinearProgressIndicator(
-                    backgroundColor: Colors.transparent,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: GlobalLoader(size: 40),
                   ),
                 ),
               SliverToBoxAdapter(
@@ -500,7 +504,7 @@ class _BookDescriptionPageState extends State<BookDescriptionPage> {
                               const SizedBox(height: 35),
                             ],
                           ] else 
-                            const Center(child: CircularProgressIndicator()),
+                            const Center(child: GlobalLoader(size: 40)),
 
                           const SizedBox(height: 120), // Space for bottom buttons
                         ],
@@ -554,12 +558,12 @@ class _BookDescriptionPageState extends State<BookDescriptionPage> {
                     },
                   ),
                   const SizedBox(width: 15),
-                  // Main Add to Cart Button
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: _handleAddToCart,
+                      onPressed: displayStock > 0 ? _handleAddToCart : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
+                        disabledBackgroundColor: Colors.grey[400],
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 18),
                         shape: RoundedRectangleBorder(
@@ -572,17 +576,13 @@ class _BookDescriptionPageState extends State<BookDescriptionPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           if (_isAddingToCart)
-                            const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                            )
+                            const GlobalLoader(size: 20, color: Colors.white)
                           else ...[
-                            const Icon(Icons.add_shopping_cart_rounded, size: 22),
+                            Icon(displayStock > 0 ? Icons.add_shopping_cart_rounded : Icons.remove_shopping_cart_rounded, size: 22),
                             const SizedBox(width: 10),
-                            const Text(
-                              "Add To Cart",
-                              style: TextStyle(
+                            Text(
+                              displayStock > 0 ? "Add To Cart" : "Out of Stock",
+                              style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 0.5,
@@ -597,6 +597,7 @@ class _BookDescriptionPageState extends State<BookDescriptionPage> {
               ),
             ),
           ),
+          if (_isLoadingBook) const GlobalLoader(isOverlay: true, message: 'Refreshing details...'),
         ],
       ),
     );
@@ -660,7 +661,10 @@ class _BookDescriptionPageState extends State<BookDescriptionPage> {
     final error = await _cartService.addToCart(_currentBook.id);
     
     if (mounted) {
-      setState(() => _isAddingToCart = false);
+      setState(() {
+        _isAddingToCart = false;
+      });
+      
       if (error == null) {
         Provider.of<CartProvider>(context, listen: false).fetchCartCount();
         toastification.show(
@@ -791,11 +795,7 @@ class _BookDescriptionPageState extends State<BookDescriptionPage> {
                           placeholder: (context, url) => Container(
                             color: Colors.grey[100],
                             child: const Center(
-                              child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              ),
+                              child: GlobalLoader(size: 20),
                             ),
                           ),
                           errorWidget: (context, url, error) => Container(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../features/notifications/data/notification_provider.dart';
+import '../core/widgets/global_loader.dart';
 
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
@@ -32,7 +33,7 @@ class _NotificationPageState extends State<NotificationPage> {
               _buildFilterChips(),
               Expanded(
                 child: provider.isLoading && notifications.isEmpty
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const Center(child: GlobalLoader(size: 40))
                     : notifications.isEmpty
                         ? _buildEmptyState()
                         : RefreshIndicator(

@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ui/core/constants/api_constants.dart';
-import 'package:ui/core/models/user_address.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../../core/models/user_address.dart';
 
 class UserAddressService {
   final String _baseUrl = '${ApiConstants.baseUrl}/user/addresses';
