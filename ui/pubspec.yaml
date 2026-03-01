@@ -40,6 +40,7 @@ dependencies:
   geocoding: ^3.0.0
   http: ^1.6.0
   cached_network_image: ^3.4.1
+  url_launcher: ^6.2.0
   provider: ^6.1.2
   shared_preferences: ^2.5.3
   qr_flutter: ^4.1.0
@@ -49,6 +50,16 @@ dependencies:
   toastification: ^3.0.3
   intl: ^0.20.2
   mobile_scanner: ^5.1.0
+  google_sign_in: ^6.2.1
+  flutter_facebook_auth: ^7.1.1
+  flutter_widget_from_html_core: ^0.15.2
+  web_socket_channel: ^3.0.3
+  pdf: ^3.11.1
+  printing: ^5.13.2
+  flutter_colorpicker: ^1.1.0
+  share_plus: 10.1.4
+  path_provider: ^2.1.5
+  path: ^1.9.1
 
 
 dev_dependencies:

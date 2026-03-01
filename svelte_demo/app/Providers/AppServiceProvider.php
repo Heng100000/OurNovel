@@ -3,13 +3,13 @@
 namespace App\Providers;
 
 use Carbon\CarbonImmutable;
+use Dedoc\Scramble\Scramble;
+use Dedoc\Scramble\Support\Generator\OpenApi;
+use Dedoc\Scramble\Support\Generator\SecurityScheme;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
-use Dedoc\Scramble\Scramble;
-use Dedoc\Scramble\Support\Generator\OpenApi;
-use Dedoc\Scramble\Support\Generator\SecurityScheme;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -34,8 +34,10 @@ class AppServiceProvider extends ServiceProvider
 
         \App\Models\Order::observe(\App\Observers\OrderObserver::class);
         \App\Models\OrderItem::observe(\App\Observers\OrderItemObserver::class);
+        \App\Models\CartItem::observe(\App\Observers\CartItemObserver::class);
         \App\Models\Notification::observe(\App\Observers\NotificationObserver::class);
         \App\Models\Book::observe(\App\Observers\BookObserver::class);
+        \App\Models\NewsAnnouncement::observe(\App\Observers\NewsAnnouncementObserver::class);
 
         Scramble::afterOpenApiGenerated(function (OpenApi $openApi) {
             $openApi->secure(

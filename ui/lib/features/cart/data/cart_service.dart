@@ -59,7 +59,7 @@ class CartService {
           'Accept': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -91,7 +91,7 @@ class CartService {
             },
             body: jsonEncode({'quantity': quantity}),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         return null;
@@ -119,7 +119,7 @@ class CartService {
           'Accept': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 30));
 
       return response.statusCode == 204 || response.statusCode == 200;
     } catch (e) {

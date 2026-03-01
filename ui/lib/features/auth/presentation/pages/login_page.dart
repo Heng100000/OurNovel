@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/widgets/global_loader.dart';
 import '../../data/auth_service.dart';
 import '../../../../widget/home_screen.dart';
 import 'signup_page.dart';
@@ -159,9 +160,11 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
               ],
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Stack(
             children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
               // Header Section
               Padding(
                 padding: const EdgeInsets.only(top: 60, left: 30, right: 30),
@@ -334,7 +337,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                                     ? const SizedBox(
                                         height: 24,
                                         width: 24,
-                                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                        child: const GlobalLoader(size: 20, color: Colors.white),
                                       )
                                     : const Text(
                                         'SIGN IN',
@@ -392,6 +395,9 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                   ),
                 ),
               ),
+                ],
+              ),
+              if (_isLoading) const GlobalLoader(isOverlay: true, message: 'Signing in...'),
             ],
           ),
         ),

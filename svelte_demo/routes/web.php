@@ -30,3 +30,6 @@ require __DIR__.'/settings.php';
 
 Route::get('/', [TaskController::class, 'index'])->name('home');
 Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
+
+// Public News Sharing Route
+Route::get('/news/{newsAnnouncement}', [\App\Http\Controllers\Web\NewsAnnouncementController::class, 'show'])->name('news.show');

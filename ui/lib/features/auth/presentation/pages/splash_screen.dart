@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/widgets/global_loader.dart';
 import '../../../../widget/home_screen.dart';
 import 'login_page.dart';
 
@@ -39,9 +40,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return const Scaffold(
       body: Center(
-        child: CircularProgressIndicator(
-          color: Color(0xFF5a7335),
-        ),
+        child: GlobalLoader(size: 80),
       ),
     );
   }

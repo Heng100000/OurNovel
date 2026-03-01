@@ -45,10 +45,22 @@ return [
     ],
 
     'bakong' => [
-        'token'         => env('BAKONG_TOKEN'),
-        'account_id'    => env('BAKONG_ACCOUNT_ID', 'yourshop@aba'),
+        'token' => env('BAKONG_TOKEN'),
+        'account_id' => env('BAKONG_ACCOUNT_ID', 'yourshop@aba'),
         'merchant_name' => env('BAKONG_MERCHANT_NAME', 'BookStore'),
         'merchant_city' => env('BAKONG_MERCHANT_CITY', 'Phnom Penh'),
+    ],
+
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+    ],
+
+    'facebook' => [
+        'client_id' => env('FACEBOOK_CLIENT_ID'),
+        'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
+        'redirect' => env('FACEBOOK_REDIRECT_URI'),
     ],
 
 ];

@@ -1,0 +1,18 @@
+<?php
+
+require __DIR__.'/vendor/autoload.php';
+$app = require_once __DIR__.'/bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+
+use App\Models\Book;
+
+$books = Book::select('id', 'title')->get();
+
+foreach ($books as $book) {
+    try {
+        $url = route('filament.admin.resources.books.edit', ['record' => $book]);
+        echo "ID: {$book->id} | Title: {$book->title} | URL: {$url}\n";
+    } catch (\Exception $e) {
+        echo "ID: {$book->id} | Title: {$book->title} | ERROR: " . $e->getMessage() . "\n";
+    }
+}

@@ -1,6 +1,6 @@
-import '../../../core/models/author.dart';
-import '../../../core/models/category.dart';
-import '../../../core/models/book.dart';
+import '../models/author.dart';
+import '../models/category.dart';
+import '../models/book.dart';
 
 class DataCache {
   static final DataCache _instance = DataCache._internal();

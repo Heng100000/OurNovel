@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../features/payway/services/payway_service.dart';
+import '../core/widgets/global_loader.dart';
 
 class KHQRDialog extends StatefulWidget {
   final String qrString;
@@ -154,9 +155,9 @@ class _KHQRDialogState extends State<KHQRDialog> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF5a7335)),
+              width: 24,
+              height: 24,
+              child: const GlobalLoader(size: 20, color: Color(0xFF5a7335)),
             ),
             const SizedBox(width: 15),
             Flexible(

@@ -28,7 +28,7 @@ class PaymentService {
           'order_id': orderId,
           'method': method,
         }),
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = json.decode(response.body);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
+import '../core/widgets/global_loader.dart';
 import '../l10n/language_service.dart';
 import '../core/models/book.dart' as model;
 import '../features/home/data/wishlist_service.dart';
@@ -301,7 +302,7 @@ class _WishlistPageState extends State<WishlistPage> {
               child: Consumer<WishlistProvider>(
                 builder: (context, wishlistProvider, child) {
                   if (wishlistProvider.isLoading && wishlistProvider.items.isEmpty) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(child: GlobalLoader(size: 40));
                   }
                   
                   if (wishlistProvider.items.isEmpty) {
@@ -415,7 +416,7 @@ class _WishlistPageState extends State<WishlistPage> {
           // Book Image
           SizedBox(
             width: 85,
-            height: 110,
+            height: 130,
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(15),
@@ -435,7 +436,7 @@ class _WishlistPageState extends State<WishlistPage> {
                         fit: BoxFit.cover,
                         placeholder: (context, url) => Container(
                           color: Colors.grey.shade100,
-                          child: const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+                          child: const Center(child: GlobalLoader(size: 20)),
                         ),
                         errorWidget: (context, url, error) => Container(
                           color: Colors.grey.shade100,

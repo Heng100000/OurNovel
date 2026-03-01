@@ -1,0 +1,22 @@
+<?php
+
+require __DIR__.'/vendor/autoload.php';
+$app = require_once __DIR__.'/bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+$tables = ['payments', 'orders', 'shippings', 'invoices', 'books', 'news_announcements'];
+
+foreach ($tables as $table) {
+    if (Schema::hasTable($table)) {
+        $sample = DB::table($table)->select('created_at')->limit(5)->get();
+        echo "Table: {$table}\n";
+        foreach ($sample as $row) {
+            echo "  Created At: " . ($row->created_at ?? 'NULL') . "\n";
+        }
+    } else {
+        echo "Table: {$table} not found\n";
+    }
+}

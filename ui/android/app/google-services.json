@@ -1,26 +1,44 @@
 {
   "project_info": {
-    "project_number": "913256132838",
-    "project_id": "book-store-3a2c5",
-    "storage_bucket": "book-store-3a2c5.firebasestorage.app"
+    "project_number": "838844969174",
+    "project_id": "level-bond-488711-f7",
+    "storage_bucket": "level-bond-488711-f7.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:913256132838:android:d13a4ed91db46f53fe0b27",
+        "mobilesdk_app_id": "1:838844969174:android:13cc8474818ec7b4acd977",
         "android_client_info": {
           "package_name": "com.example.ui"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "838844969174-cnj7ik24okfrummek4osd12n2ebpj600.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.ui",
+            "certificate_hash": "d0a0bd43f836030930a588cd780b66bb8f9392bc"
+          }
+        },
+        {
+          "client_id": "838844969174-f2859nav3ruc3jber1an764tikbvfgul.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyAcsNRFZoIN2F-qX3xFAYZeyHjCLMOkaV0"
+          "current_key": "AIzaSyB_MRmIf-FPLiaoTPMOQRH6auWsAkiSFxo"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "838844969174-f2859nav3ruc3jber1an764tikbvfgul.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

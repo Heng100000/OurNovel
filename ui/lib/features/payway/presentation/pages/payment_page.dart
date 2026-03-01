@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../../core/widgets/global_loader.dart';
 import '../../../../core/models/payment.dart';
 import '../../../../l10n/language_service.dart';
 import '../../data/payment_service.dart';
@@ -23,7 +24,7 @@ class _PaymentPageState extends State<PaymentPage> {
   bool _isPaid = false;
   Timer? _pollingTimer;
   int _retryCount = 0;
-  final int _maxRetries = 30; // 30 retries * 3 seconds = 90 seconds
+  final int _maxRetries = 100; // Increased to 100 (5 minutes) for better UX
 
   @override
   void initState() {
@@ -38,7 +39,10 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   void _startPolling() {
-    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+    // Initial check immediately
+    _checkPaymentStatus();
+    
+    _pollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       if (_retryCount >= _maxRetries) {
         timer.cancel();
         return;
@@ -109,17 +113,18 @@ class _PaymentPageState extends State<PaymentPage> {
             colors: [Color(0xFFF8FAF5), Colors.white],
           ),
         ),
-        child: Center(
+        child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (!_isPaid) ...[
                   // Header Section
                   Container(
-                    margin: const EdgeInsets.only(bottom: 24),
-                    padding: const EdgeInsets.all(16),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: const Color(0xFF5a7335).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
@@ -184,32 +189,32 @@ class _PaymentPageState extends State<PaymentPage> {
                           child: widget.payment.qrImageUrl != null
                               ? CachedNetworkImage(
                                   imageUrl: widget.payment.qrImageUrl!,
-                                  width: 260,
-                                  height: 260,
+                                  width: 200,
+                                  height: 200,
                                   placeholder: (context, url) => const SizedBox(
-                                    width: 260,
-                                    height: 260,
-                                    child: Center(child: CircularProgressIndicator(color: Color(0xFF5a7335))),
+                                    width: 200,
+                                    height: 200,
+                                    child: Center(child: GlobalLoader(size: 32)),
                                   ),
                                   errorWidget: (context, url, error) => Container(
-                                    width: 260,
-                                    height: 260,
+                                    width: 200,
+                                    height: 200,
                                     color: Colors.grey[50],
-                                    child: const Icon(Icons.qr_code_2, size: 100, color: Colors.grey),
+                                    child: const Icon(Icons.qr_code_2, size: 80, color: Colors.grey),
                                   ),
                                 )
                               : Container(
-                                  width: 260,
-                                  height: 260,
+                                  width: 200,
+                                  height: 200,
                                   color: Colors.grey[50],
-                                  child: const Center(child: CircularProgressIndicator(color: Color(0xFF5a7335))),
+                                  child: const Center(child: GlobalLoader(size: 32)),
                                 ),
                         ),
                       ),
                     ],
                   ),
                   
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 24),
                   
                   // Status Indicator
                   Container(
@@ -229,12 +234,9 @@ class _PaymentPageState extends State<PaymentPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Color(0xFF5a7335),
-                          ),
+                          width: 24,
+                          height: 24,
+                          child: GlobalLoader(size: 20),
                         ),
                         const SizedBox(width: 12),
                         Text(
@@ -257,7 +259,7 @@ class _PaymentPageState extends State<PaymentPage> {
                     child: ElevatedButton.icon(
                       onPressed: _isChecking ? null : _checkPaymentStatus,
                       icon: _isChecking 
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        ? const SizedBox(width: 20, height: 20, child: GlobalLoader(size: 20))
                         : const Icon(Icons.refresh_rounded, size: 20),
                       label: Text(
                         _langService.translate('check_status'),

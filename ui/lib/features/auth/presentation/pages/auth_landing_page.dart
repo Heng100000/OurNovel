@@ -3,6 +3,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/constants/app_colors.dart';
 import 'login_page.dart';
 import 'signup_page.dart';
+import '../../data/auth_service.dart';
+import '../../../../widget/home_screen.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:toastification/toastification.dart';
 
 class AuthLandingPage extends StatefulWidget {
   const AuthLandingPage({super.key});
@@ -13,6 +17,9 @@ class AuthLandingPage extends StatefulWidget {
 
 class _AuthLandingPageState extends State<AuthLandingPage> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  final AuthService _authService = AuthService();
+  bool _isGoogleLoading = false;
+  bool _isFacebookLoading = false;
   
   // Animations
   late Animation<double> _logoFadeAnimation;
@@ -85,6 +92,130 @@ class _AuthLandingPageState extends State<AuthLandingPage> with SingleTickerProv
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() {
+      _isGoogleLoading = true;
+    });
+
+    try {
+      // Fetch FCM Token
+      String? fcmToken;
+      try {
+        fcmToken = await FirebaseMessaging.instance.getToken();
+      } catch (e) {
+        debugPrint('Error fetching FCM token: $e');
+      }
+
+      final result = await _authService.loginWithGoogle(
+        fcmToken: fcmToken,
+        deviceType: Theme.of(context).platform == TargetPlatform.android ? 'android' : 'ios',
+      );
+
+      if (mounted) {
+        if (result['success']) {
+          toastification.show(
+            context: context,
+            title: const Text('Login Successful'),
+            description: const Text('Welcome to Our Novel!'),
+            type: ToastificationType.success,
+            autoCloseDuration: const Duration(seconds: 3),
+          );
+
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+            (route) => false,
+          );
+        } else if (result['message'] != 'Google Sign-In cancelled') {
+          toastification.show(
+            context: context,
+            title: const Text('Login Failed'),
+            description: Text(result['message'] ?? 'Unable to sign in with Google'),
+            type: ToastificationType.error,
+            autoCloseDuration: const Duration(seconds: 4),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        toastification.show(
+          context: context,
+          title: const Text('Error'),
+          description: Text(e.toString()),
+          type: ToastificationType.error,
+          autoCloseDuration: const Duration(seconds: 4),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGoogleLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleFacebookSignIn() async {
+    setState(() {
+      _isFacebookLoading = true;
+    });
+
+    try {
+      // Fetch FCM Token
+      String? fcmToken;
+      try {
+        fcmToken = await FirebaseMessaging.instance.getToken();
+      } catch (e) {
+        debugPrint('Error fetching FCM token: $e');
+      }
+
+      final result = await _authService.loginWithFacebook(
+        fcmToken: fcmToken,
+        deviceType: Theme.of(context).platform == TargetPlatform.android ? 'android' : 'ios',
+      );
+
+      if (mounted) {
+        if (result['success']) {
+          toastification.show(
+            context: context,
+            title: const Text('Login Successful'),
+            description: const Text('Welcome to Our Novel!'),
+            type: ToastificationType.success,
+            autoCloseDuration: const Duration(seconds: 3),
+          );
+
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+            (route) => false,
+          );
+        } else if (result['message'] != 'Facebook Sign-In cancelled') {
+          toastification.show(
+            context: context,
+            title: const Text('Login Failed'),
+            description: Text(result['message'] ?? 'Unable to sign in with Facebook'),
+            type: ToastificationType.error,
+            autoCloseDuration: const Duration(seconds: 4),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        toastification.show(
+          context: context,
+          title: const Text('Error'),
+          description: Text(e.toString()),
+          type: ToastificationType.error,
+          autoCloseDuration: const Duration(seconds: 4),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isFacebookLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -260,9 +391,7 @@ class _AuthLandingPageState extends State<AuthLandingPage> with SingleTickerProv
                         width: double.infinity,
                         height: 56,
                         child: ElevatedButton(
-                          onPressed: () {
-                            // TODO: Implement Google Sign In
-                          },
+                          onPressed: (_isGoogleLoading || _isFacebookLoading) ? null : _handleGoogleSignIn,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white.withOpacity(0.1),
                             foregroundColor: Colors.white,
@@ -272,25 +401,75 @@ class _AuthLandingPageState extends State<AuthLandingPage> with SingleTickerProv
                               side: BorderSide(color: Colors.white.withOpacity(0.3), width: 1),
                             ),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CachedNetworkImage(
-                                imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1200px-Google_%22G%22_logo.svg.png',
-                                height: 24,
-                                width: 24,
-                              ),
-                              const SizedBox(width: 12),
-                              const Text(
-                                'CONTINUE WITH GOOGLE',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.0,
+                          child: _isGoogleLoading 
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                 ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  CachedNetworkImage(
+                                    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1200px-Google_%22G%22_logo.svg.png',
+                                    height: 24,
+                                    width: 24,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Text(
+                                    'CONTINUE WITH GOOGLE',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.0,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Facebook Login Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: (_isGoogleLoading || _isFacebookLoading) ? null : _handleFacebookSignIn,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1877F2), // Facebook Blue
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
                           ),
+                          child: _isFacebookLoading 
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.facebook_rounded, color: Colors.white, size: 24),
+                                  SizedBox(width: 12),
+                                  Text(
+                                    'CONTINUE WITH FACEBOOK',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.0,
+                                    ),
+                                  ),
+                                ],
+                              ),
                         ),
                       ),
                     ],

@@ -6,8 +6,9 @@ import '../../../core/models/order.dart';
 
 class OrderService {
   Future<Order?> placeOrder({
-    required int addressId,
-    required int deliveryCompanyId,
+    required String deliveryMethod,
+    int? addressId,
+    int? deliveryCompanyId,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -25,10 +26,11 @@ class OrderService {
           'Authorization': 'Bearer $token',
         },
         body: jsonEncode({
-          'address_id': addressId,
-          'delivery_company_id': deliveryCompanyId,
+          'delivery_method': deliveryMethod,
+          if (addressId != null) 'address_id': addressId,
+          if (deliveryCompanyId != null) 'delivery_company_id': deliveryCompanyId,
         }),
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = json.decode(response.body);

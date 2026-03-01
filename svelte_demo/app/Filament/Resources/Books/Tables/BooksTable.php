@@ -32,7 +32,7 @@ class BooksTable
                     ->label('Discount Price')
                     ->badge()
                     ->color('success')
-                    ->formatStateUsing(fn (?string $state): string => $state ? '$' . $state : '-')
+                    ->formatStateUsing(fn (?string $state): string => $state ? '$'.$state : '-')
                     ->sortable(false),
                 TextColumn::make('condition')
                     ->searchable(),
@@ -58,6 +58,7 @@ class BooksTable
             ->recordActions([
                 EditAction::make(),
             ])
+            ->poll('5s')
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),

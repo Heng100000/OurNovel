@@ -1,6 +1,8 @@
 <?php
+
 namespace App\Providers\Filament;
 
+use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -9,22 +11,16 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets\AccountWidget;
-use Filament\Widgets\FilamentInfoWidget;
+use Filament\Support\Enums\Width;
+use Filament\Support\Facades\FilamentView;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
-use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Filament\Support\Enums\Width;
-use Filament\View\PanelsRenderHook;
 use Illuminate\Support\Facades\Blade;
-
-use Filament\Support\Facades\FilamentView;
-use Filament\Support\Facades\FilamentAsset;
-use Filament\Support\Assets\Css;
-use Illuminate\Support\HtmlString;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -41,6 +37,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogo(asset('images/logo_full.png'))
             ->brandLogoHeight('2.7rem')
             ->maxContentWidth(Width::Full)
+            ->spa()
             ->sidebarFullyCollapsibleOnDesktop()
             ->sidebarWidth('18rem')
             ->databaseNotifications()
@@ -69,6 +66,9 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+            ])
+            ->plugins([
+                FilamentShieldPlugin::make(),
             ])
             ->authMiddleware([
                 Authenticate::class,

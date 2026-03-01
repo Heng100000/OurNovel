@@ -2,19 +2,19 @@
 
 namespace App\Filament\Resources\Books\Schemas;
 
+use App\Models\Promotion;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\Placeholder;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
-use App\Models\Promotion;
 
 class BookForm
 {
@@ -76,14 +76,14 @@ class BookForm
                                                 }
 
                                                 $promotion = Promotion::find($promotionId);
-                                                
+
                                                 if (! $promotion || $promotion->status !== 'active') {
                                                     return '-';
                                                 }
 
                                                 $now = now();
                                                 if ($promotion->start_date && $now->lt($promotion->start_date->startOfDay())) {
-                                                    return 'Starts ' . $promotion->start_date->format('M d');
+                                                    return 'Starts '.$promotion->start_date->format('M d');
                                                 }
                                                 if ($promotion->end_date && $now->gt($promotion->end_date->endOfDay())) {
                                                     return 'Expired';
@@ -91,11 +91,12 @@ class BookForm
 
                                                 if ($promotion->discount_type === 'percentage') {
                                                     $discount = $price * ($promotion->discount_value / 100);
-                                                    return '$' . number_format($price - $discount, 2);
+
+                                                    return '$'.number_format($price - $discount, 2);
                                                 }
 
                                                 if ($promotion->discount_type === 'fixed') {
-                                                    return '$' . number_format(max(0, $price - $promotion->discount_value), 2);
+                                                    return '$'.number_format(max(0, $price - $promotion->discount_value), 2);
                                                 }
 
                                                 return '-';
@@ -181,7 +182,7 @@ class BookForm
                                             ->schema([
                                                 FileUpload::make('image_url')
                                                     ->label('Image')
-                                                    ->image()
+                                                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'])
                                                     ->imageEditor()
                                                     ->directory('flutter-book')
                                                     ->imagePreviewHeight('200')

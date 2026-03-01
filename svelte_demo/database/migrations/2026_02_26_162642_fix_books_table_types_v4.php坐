@@ -1,0 +1,37 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        if (DB::getDriverName() !== 'pgsql') {
+            return;
+        }
+
+        Schema::table('books', function (Blueprint $table) {
+            DB::statement('ALTER TABLE books ALTER COLUMN description TYPE text USING description::text');
+            DB::statement('ALTER TABLE books ALTER COLUMN video_url TYPE text USING video_url::text');
+            DB::statement('ALTER TABLE books ALTER COLUMN title TYPE text USING title::text');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('books', function (Blueprint $table) {
+            DB::statement('ALTER TABLE books ALTER COLUMN description TYPE varchar(255)');
+            DB::statement('ALTER TABLE books ALTER COLUMN video_url TYPE varchar(255)');
+            DB::statement('ALTER TABLE books ALTER COLUMN title TYPE varchar(255)');
+        });
+    }
+};

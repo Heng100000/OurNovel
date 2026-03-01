@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/widgets/global_loader.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
@@ -224,7 +225,7 @@ class _MapPickerPageState extends State<MapPickerPage> {
                         ),
                       ),
                       child: _isLoading 
-                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        ? const GlobalLoader(size: 20, color: Colors.white)
                         : Text(
                              LanguageService().translate('confirm_location'),
                             style: const TextStyle(
