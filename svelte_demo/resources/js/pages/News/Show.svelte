@@ -1,5 +1,4 @@
 <script lang="ts">
-    import { Head } from '@inertiajs/svelte';
 
     export let news: {
         title: string;
@@ -16,7 +15,7 @@
     };
 </script>
 
-<Head>
+<svelte:head>
     <title>{meta.title}</title>
     <meta name="description" content={meta.description} />
     
@@ -37,7 +36,7 @@
     {#if meta.image}
         <meta property="twitter:image" content={meta.image} />
     {/if}
-</Head>
+</svelte:head>
 
 <div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 dark:bg-zinc-900">
     <div class="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden dark:bg-zinc-800">
