@@ -49,6 +49,9 @@ WORKDIR /var/www/html
 # Copy application files (make sure node_modules and vendor are in .dockerignore)
 COPY . .
 
+# Use the production environment file
+RUN cp .env.pro .env
+
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
