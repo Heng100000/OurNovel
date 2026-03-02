@@ -32,7 +32,6 @@ class DeliveryCompanyForm
                         FileUpload::make('logo_path')
                             ->label('Company Logo')
                             ->image()
-                            ->disk('public')
                             ->directory('delivery-logos')
                             ->avatar()
                             ->imageEditor()
