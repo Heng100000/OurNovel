@@ -1,8 +1,8 @@
 APP_NAME=Laravel
 APP_ENV=production
 APP_KEY=base64:UjiL3j1wCCIAVk/45AfHqNw4XCU0Dwg8YCq0Y7K7Lac=
-APP_DEBUG=false
-APP_URL=https://your-render-app-name.onrender.com
+APP_DEBUG=true
+APP_URL=https://ournovel.onrender.com
 
 APP_LOCALE=en
 APP_FALLBACK_LOCALE=en
@@ -87,7 +87,7 @@ FACEBOOK_REDIRECT_URI=https://your-render-app-name.onrender.com/api/auth/faceboo
 REVERB_APP_ID=639660
 REVERB_APP_KEY=pore5j1hjthluaf70rhh
 REVERB_APP_SECRET=urse7rwsup9siovelvvp
-REVERB_HOST="your-render-app-name.onrender.com"
+REVERB_HOST="ournovel.onrender.com"
 REVERB_PORT=443
 REVERB_SCHEME=https
 
