@@ -9,12 +9,12 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use Filament\Models\Contracts\FilamentUser;
-use Filament\Panel;
+use BezhanSalleh\FilamentShield\Traits\HasPanelShield;
 
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasApiTokens, HasFactory, HasRoles, Notifiable;
+    use HasApiTokens, HasFactory, HasRoles, HasPanelShield, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -154,11 +154,4 @@ class User extends Authenticatable implements FilamentUser
         return \Illuminate\Support\Facades\Storage::disk('supabase')->url($value);
     }
 
-    /**
-     * Determine if the user can access the Filament admin panel.
-     */
-    public function canAccessPanel(Panel $panel): bool
-    {
-        return $this->role === 'admin' || $this->hasRole('super_admin');
-    }
 }
