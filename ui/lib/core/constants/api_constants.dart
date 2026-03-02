@@ -1,29 +1,27 @@
 class ApiConstants {
-  // Static toggle to switch between Local IP and ngrok
-  // Set this to true if you are using ngrok for testing
-  static const bool useNgrok = false;
+  // Static toggle to switch between Production and Local
+  static const bool useProduction = true;
+
+  static const String productionUrl = 'https://ournovel.onrender.com';
 
   // Use your computer's IP address (from ipconfig)
   static const String localIp = '192.168.18.4'; // <--- Change this to your PC's IP
-
-  // Change this to the URL you get from running 'ngrok http 127.0.0.1:8001'
-  static const String ngrokUrl = 'https://YOUR-URL.ngrok-free.app';
 
   // Reverb / WebSocket Settings
   static const String pusherKey = 'pore5j1hjthluaf70rhh';
   static const int reverbPort = 8080;
 
-  static const String baseUrl = useNgrok
-      ? '$ngrokUrl/api'
+  static const String baseUrl = useProduction
+      ? '$productionUrl/api'
       : 'http://$localIp:8001/api';
 
-  static const String baseImageUrl = useNgrok
-      ? '$ngrokUrl/storage'
+  static const String baseImageUrl = useProduction
+      ? '$productionUrl/storage'
       : 'http://$localIp:8001/storage';
 
   // WebSocket URL (Reverb)
-  static const String wsUrl = useNgrok
-      ? 'wss://$ngrokUrl/app/$pusherKey?protocol=7&client=js&version=8.4.0&flash=false'
+  static const String wsUrl = useProduction
+      ? 'wss://ournovel.onrender.com/app/$pusherKey?protocol=7&client=js&version=8.4.0&flash=false'
       : 'ws://$localIp:$reverbPort/app/$pusherKey?protocol=7&client=js&version=8.4.0&flash=false';
 
   static const String login = '$baseUrl/login';
