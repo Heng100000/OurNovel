@@ -25,7 +25,7 @@ DB_DATABASE=my_book
 DB_USERNAME=postgres.ctkyoptgnsjpqnxmibyh
 DB_PASSWORD='Heng$1234$##'
 
-SESSION_DRIVER=database
+SESSION_DRIVER=redis
 SESSION_LIFETIME=120
 SESSION_ENCRYPT=true
 SESSION_PATH=/
@@ -33,19 +33,14 @@ SESSION_DOMAIN=null
 
 BROADCAST_CONNECTION=reverb
 FILESYSTEM_DISK=supabase
-QUEUE_CONNECTION=database
+QUEUE_CONNECTION=redis
 
-CACHE_STORE=database
+CACHE_STORE=redis
 # CACHE_PREFIX=
 
-# Redis configuration (uncomment if you add a Redis addon in Render)
-# REDIS_CLIENT=predis
-# REDIS_HOST=
-# REDIS_PASSWORD=
-# REDIS_PORT=6379
-# SESSION_DRIVER=redis
-# QUEUE_CONNECTION=redis
-# CACHE_STORE=redis
+# Redis configuration
+REDIS_CLIENT=predis
+REDIS_URL=redis://red-d6ij7aua2pns739653sg:6379
 
 MAIL_MAILER=log
 MAIL_SCHEME=null
