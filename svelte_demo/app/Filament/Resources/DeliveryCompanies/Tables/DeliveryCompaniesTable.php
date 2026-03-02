@@ -18,9 +18,7 @@ class DeliveryCompaniesTable
             ->columns([
                 ImageColumn::make('logo_path')
                     ->label('Logo')
-                    ->circular()
-                    ->disk('public')
-                    ->visibility('public'),
+                    ->circular(),
                 TextColumn::make('name')
                     ->searchable(),
                 TextColumn::make('contact_phone')

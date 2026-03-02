@@ -25,7 +25,6 @@ class EventForm
                         FileUpload::make('banner_image_path')
                             ->label('Event Banner')
                             ->image()
-                            ->disk('public')
                             ->directory('events/banners')
                             ->imageEditor()
                             ->imageEditorAspectRatios(['16:9', '4:3'])
