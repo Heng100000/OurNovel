@@ -28,7 +28,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 require __DIR__.'/settings.php';
 
-Route::get('/', [TaskController::class, 'index'])->name('home');
+Route::redirect('/', '/admin')->name('home');
 Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
 
 // Public News Sharing Route

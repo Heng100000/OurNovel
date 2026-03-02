@@ -10,6 +10,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use Filament\Models\Contracts\FilamentUser;
 use BezhanSalleh\FilamentShield\Traits\HasPanelShield;
+use Filament\Panel;
 
 class User extends Authenticatable implements FilamentUser
 {
@@ -154,4 +155,19 @@ class User extends Authenticatable implements FilamentUser
         return \Illuminate\Support\Facades\Storage::disk('supabase')->url($value);
     }
 
+    /**
+     * Determine if the user can access the Filament admin panel.
+     */
+    public function canAccessPanel(Panel $panel): bool
+    {
+        if ($this->role === 'admin') {
+            return true;
+        }
+
+        try {
+            return $this->hasRole(config('filament-shield.super_admin.name', 'super_admin'));
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
 }
