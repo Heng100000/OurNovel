@@ -15,4 +15,7 @@ php artisan config:cache || true
 php artisan route:cache || true
 php artisan view:cache || true
 
+# Fix permissions after generating cache and running migrations as root
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+
 echo "Setup complete."
