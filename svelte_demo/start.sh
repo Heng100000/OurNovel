@@ -5,6 +5,9 @@ set -e
 PORT="${PORT:-80}"
 sed -i "s/80/$PORT/g" /etc/apache2/sites-available/000-default.conf /etc/apache2/ports.conf
 
+# Add reverse proxy for Laravel Reverb WebSockets
+sed -i '/<\/VirtualHost>/i \    ProxyPass "/app" "ws://127.0.0.1:8080/app"\n    ProxyPassReverse "/app" "ws://127.0.0.1:8080/app"\n    ProxyPass "/apps" "http://127.0.0.1:8080/apps"\n    ProxyPassReverse "/apps" "http://127.0.0.1:8080/apps"' /etc/apache2/sites-available/000-default.conf
+
 echo "Starting deployment scripts..."
 
 # Run migrations (Optional but highly recommended for auto-deployment)
