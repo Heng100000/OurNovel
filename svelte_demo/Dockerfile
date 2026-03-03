@@ -94,4 +94,4 @@ RUN chmod +x /usr/local/bin/start.sh
 EXPOSE 80 8080
 
 # Start supervisor
-CMD ["/usr/local/bin/start.sh"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
