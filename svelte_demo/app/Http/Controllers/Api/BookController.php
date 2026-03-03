@@ -65,6 +65,14 @@ class BookController extends Controller
             }]);
         }
 
+        if ($request->has('author_id')) {
+            $query->where('author_id', $request->author_id);
+        }
+
+        if ($request->has('search')) {
+            $query->where('title', 'ILIKE', '%' . $request->search . '%');
+        }
+
         if ($request->has('condition')) {
             $query->where('condition', 'ILIKE', $request->condition);
         }

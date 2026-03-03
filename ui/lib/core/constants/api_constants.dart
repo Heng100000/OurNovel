@@ -21,7 +21,7 @@ class ApiConstants {
 
   // WebSocket URL (Reverb)
   static const String wsUrl = useProduction
-      ? 'wss://ournovel.onrender.com/app/$pusherKey?protocol=7&client=js&version=8.4.0&flash=false'
+      ? 'wss://ournovel.onrender.com:443/app/$pusherKey?protocol=7&client=js&version=8.4.0&flash=false'
       : 'ws://$localIp:$reverbPort/app/$pusherKey?protocol=7&client=js&version=8.4.0&flash=false';
 
   static const String login = '$baseUrl/login';

@@ -4,6 +4,7 @@
     import Building2 from 'lucide-svelte/icons/building-2';
     import Folder from 'lucide-svelte/icons/folder';
     import LayoutGrid from 'lucide-svelte/icons/layout-grid';
+    import ShoppingCart from 'lucide-svelte/icons/shopping-cart';
     import Users from 'lucide-svelte/icons/users';
     import type { Snippet } from 'svelte';
     import AppLogo from '@/components/AppLogo.svelte';
@@ -38,6 +39,11 @@
             title: 'Dashboard',
             href: dashboard(),
             icon: LayoutGrid,
+        },
+        {
+            title: 'POS System',
+            href: route('pos'),
+            icon: ShoppingCart,
         },
     ];
 

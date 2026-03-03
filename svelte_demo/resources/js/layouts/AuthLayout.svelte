@@ -1,6 +1,6 @@
 <script lang="ts">
     import type { Snippet } from 'svelte';
-    import AuthLayout from '@/layouts/auth/AuthSimpleLayout.svelte';
+    import AuthLayout from '@/layouts/auth/AuthBrandedLayout.svelte';
 
     let {
         title = '',

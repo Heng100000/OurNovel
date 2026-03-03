@@ -33,6 +33,7 @@ class OrderController extends Controller
             'address_id' => 'required_if:delivery_method,delivery|nullable|exists:user_addresses,id',
             'delivery_company_id' => 'required_if:delivery_method,delivery|nullable|exists:delivery_companies,id',
             'status' => 'nullable|string',
+            'coupon_code' => 'nullable|string',
         ]);
 
         $user = $request->user();
@@ -75,6 +76,17 @@ class OrderController extends Controller
                     return $carry + ($item->quantity * $price);
                 }, 0);
 
+                /** @var \App\Models\Coupon|null $coupon */
+                $coupon = null;
+                $discountAmount = 0;
+
+                if ($request->coupon_code) {
+                    $coupon = \App\Models\Coupon::where('code', $request->coupon_code)->first();
+                    if ($coupon && $coupon->isValid((float)$subtotal)) {
+                        $discountAmount = $coupon->calculateDiscount((float)$subtotal);
+                    }
+                }
+
                 $order = Order::create([
                     'user_id' => $user->id,
                     'delivery_method' => $request->delivery_method,
@@ -83,8 +95,14 @@ class OrderController extends Controller
                     'status' => $request->status ?? 'Pending',
                     'subtotal' => $subtotal,
                     'shipping_fee' => $shippingFee,
-                    'total_price' => $subtotal + $shippingFee,
+                    'coupon_id' => $coupon ? $coupon->id : null,
+                    'discount_amount' => $discountAmount,
+                    'total_price' => max(0, $subtotal - $discountAmount) + $shippingFee,
                 ]);
+
+                if ($coupon && $discountAmount > 0) {
+                    $coupon->increment('used_count');
+                }
 
                 $orderItemsData = $cartItems->map(function ($item) {
                     return [

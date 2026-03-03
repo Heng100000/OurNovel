@@ -14,28 +14,29 @@
 
 <AppHead title="Register" />
 
-<AuthBase title="Create an account" description="Enter your details below to create your account">
+<AuthBase title="Create Account" description="Enter your details below to create your account">
+    
+
     <Form
         {...store.form()}
         resetOnSuccess={['password', 'password_confirmation']}
-        class="flex flex-col gap-6"
     >
         {#snippet children({ errors, processing })}
-            <div class="grid gap-6">
-                <div class="grid gap-2">
-                    <Label for="name">Name</Label>
+            <div class="flex flex-col gap-6">
+                <div>
+                    <Label for="name">Full Name</Label>
                     <Input
                         id="name"
                         type="text"
                         required
                         autocomplete="name"
                         name="name"
-                        placeholder="Full name"
+                        placeholder="John Doe"
                     />
-                    <InputError message={errors.name} />
+                    <InputError message={errors.name} class="input-error" />
                 </div>
 
-                <div class="grid gap-2">
+                <div>
                     <Label for="email">Email address</Label>
                     <Input
                         id="email"
@@ -43,12 +44,12 @@
                         required
                         autocomplete="email"
                         name="email"
-                        placeholder="email@example.com"
+                        placeholder="your@email.com"
                     />
-                    <InputError message={errors.email} />
+                    <InputError message={errors.email} class="input-error" />
                 </div>
 
-                <div class="grid gap-2">
+                <div>
                     <Label for="password">Password</Label>
                     <Input
                         id="password"
@@ -56,40 +57,38 @@
                         required
                         autocomplete="new-password"
                         name="password"
-                        placeholder="Password"
+                        placeholder="••••••••"
                     />
-                    <InputError message={errors.password} />
+                    <InputError message={errors.password} class="input-error" />
                 </div>
 
-                <div class="grid gap-2">
-                    <Label for="password_confirmation">Confirm password</Label>
+                <div>
+                    <Label for="password_confirmation">Confirm Password</Label>
                     <Input
                         id="password_confirmation"
                         type="password"
                         required
                         autocomplete="new-password"
                         name="password_confirmation"
-                        placeholder="Confirm password"
+                        placeholder="••••••••"
                     />
-                    <InputError message={errors.password_confirmation} />
+                    <InputError message={errors.password_confirmation} class="input-error" />
                 </div>
 
                 <Button
                     type="submit"
-                    class="mt-2 w-full"
                     disabled={processing}
                     data-test="register-user-button"
+                    class="mt-2"
                 >
-                    {#if processing}<Spinner />{/if}
+                    {#if processing}<Spinner class="mr-2 h-4 w-4" />{/if}
                     Create account
                 </Button>
-            </div>
 
-            <div class="text-center text-sm text-muted-foreground">
-                Already have an account?
-                <TextLink href={login()} class="underline underline-offset-4">
-                    Log in
-                </TextLink>
+                <div class="text-center text-[14px] text-gray-600 mt-2">
+                    Already have an account? 
+                    <TextLink href={login()} class="text-[#0d6a3d] font-bold hover:underline ml-1">Login</TextLink>
+                </div>
             </div>
         {/snippet}
     </Form>

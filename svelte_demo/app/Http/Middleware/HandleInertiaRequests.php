@@ -42,6 +42,10 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'storage' => [
+                'supabase_url' => config('filesystems.disks.supabase.url_base', config('filesystems.disks.supabase.url')),
+                'supabase_bucket' => config('filesystems.disks.supabase.bucket'),
+            ],
         ];
     }
 }
