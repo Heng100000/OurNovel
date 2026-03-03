@@ -17,7 +17,7 @@ use App\Http\Controllers\PublisherController;
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
-        return Inertia::render('Dashboard');
+        return redirect()->route('pos');
     })->name('dashboard');
 
     Route::resource('categories', CategoryController::class);
@@ -28,8 +28,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 require __DIR__.'/settings.php';
 
-Route::redirect('/', '/admin')->name('home');
-Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
+// Store Routes (React)
+Route::get('/shop/{any?}', function () {
+    return view('shop');
+})->where('any', '.*')->name('shop');
 
-// Public News Sharing Route
-Route::get('/news/{newsAnnouncement}', [\App\Http\Controllers\Web\NewsAnnouncementController::class, 'show'])->name('news.show');
+Route::redirect('/', '/shop');
+Route::redirect('/pos', '/shop');
+
+// POS Routes (Legacy)
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/pos-legacy', [App\Http\Controllers\PosController::class, 'index'])->name('pos');
+    Route::post('/pos/cart', [App\Http\Controllers\PosController::class, 'addToCart'])->name('pos.cart.add');
+    Route::post('/pos/cart/update', [App\Http\Controllers\PosController::class, 'updateQuantity'])->name('pos.cart.update');
+    Route::delete('/pos/cart/{id}', [App\Http\Controllers\PosController::class, 'removeFromCart'])->name('pos.cart.remove');
+    Route::post('/pos/checkout', [App\Http\Controllers\PosController::class, 'checkout'])->name('pos.checkout');
+});

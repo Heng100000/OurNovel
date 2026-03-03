@@ -104,8 +104,6 @@ class _BookDescriptionPageState extends State<BookDescriptionPage> {
   @override
   Widget build(BuildContext context) {
     final book = _currentBook;
-    final theme = Theme.of(context);
-    
     // Use local state for real-time updates
     final displayRating = _currentAverageRating;
     final displayLanguage = book.language ?? "Khmer";
@@ -115,9 +113,6 @@ class _BookDescriptionPageState extends State<BookDescriptionPage> {
     if (displayStock < 0) displayStock = 0;
 
     final List<BookImage> allImages = book.images ?? [];
-    if (allImages.isEmpty && book.displayImage.isNotEmpty) {
-      // Fallback if images list is empty but displayImage exists
-    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -238,75 +233,74 @@ class _BookDescriptionPageState extends State<BookDescriptionPage> {
               SliverToBoxAdapter(
                 child: Column(
                   children: [
-                    // Book Cover Slider
                     const SizedBox(height: 10),
-                    Center(
-                      child: Column(
-                        children: [
-                          Container(
-                            height: 320,
-                            width: 220,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primary.withOpacity(0.2),
-                                  blurRadius: 30,
-                                  offset: const Offset(0, 15),
-                                ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(24),
-                              child: allImages.isNotEmpty 
-                                ? PageView.builder(
-                                    controller: _pageController,
-                                    onPageChanged: (int page) {
-                                      setState(() {
-                                        _currentPage = page;
-                                      });
-                                    },
-                                    itemCount: allImages.length,
-                                    itemBuilder: (context, index) {
-                                      return CachedNetworkImage(
-                                        imageUrl: allImages[index].imageUrl,
-                                        fit: BoxFit.cover,
-                                        placeholder: (context, url) => Container(color: Colors.grey[100]),
-                                        errorWidget: (context, url, error) => const Icon(Icons.book, size: 50),
-                                      );
-                                    },
-                                  )
-                                : CachedNetworkImage(
-                                    imageUrl: book.displayImage,
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) => Container(color: Colors.grey[100]),
-                                    errorWidget: (context, url, error) => const Icon(Icons.book, size: 50),
-                                  ),
-                            ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: AspectRatio(
+                        aspectRatio: 1.0,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(28),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withOpacity(0.15),
+                                blurRadius: 30,
+                                offset: const Offset(0, 15),
+                              ),
+                            ],
                           ),
-                          if (allImages.length > 1) ...[
-                            const SizedBox(height: 20),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: List.generate(allImages.length, (index) {
-                                return AnimatedContainer(
-                                  duration: const Duration(milliseconds: 300),
-                                  width: _currentPage == index ? 24 : 8,
-                                  height: 8,
-                                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(4),
-                                    color: _currentPage == index 
-                                      ? AppColors.primary 
-                                      : Colors.grey.shade300,
-                                  ),
-                                );
-                              }),
-                            ),
-                          ],
-                        ],
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(28),
+                            child: allImages.isNotEmpty 
+                              ? PageView.builder(
+                                  controller: _pageController,
+                                  onPageChanged: (int page) {
+                                    setState(() {
+                                      _currentPage = page;
+                                    });
+                                  },
+                                  itemCount: allImages.length,
+                                  itemBuilder: (context, index) {
+                                    return CachedNetworkImage(
+                                      imageUrl: allImages[index].imageUrl,
+                                      fit: BoxFit.cover,
+                                      alignment: Alignment.topCenter,
+                                      placeholder: (context, url) => Container(color: Colors.grey[100]),
+                                      errorWidget: (context, url, error) => const Icon(Icons.book, size: 50),
+                                    );
+                                  },
+                                )
+                              : CachedNetworkImage(
+                                  imageUrl: book.displayImage,
+                                  fit: BoxFit.cover,
+                                  alignment: Alignment.topCenter,
+                                  placeholder: (context, url) => Container(color: Colors.grey[100]),
+                                  errorWidget: (context, url, error) => const Icon(Icons.book, size: 50),
+                                ),
+                          ),
+                        ),
                       ),
                     ),
+                    if (allImages.length > 1) ...[
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(allImages.length, (index) {
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            width: _currentPage == index ? 24 : 8,
+                            height: 8,
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                              color: _currentPage == index 
+                                ? AppColors.primary 
+                                : Colors.grey.shade300,
+                            ),
+                          );
+                        }),
+                      ),
+                    ],
                     const SizedBox(height: 35),
 
                     // Content Container

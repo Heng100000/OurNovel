@@ -54,6 +54,7 @@ Route::middleware('auth:sanctum')->name('api.')->group(function () {
 
     Route::apiResource('cart', \App\Http\Controllers\Api\CartItemController::class);
     Route::apiResource('wishlist', \App\Http\Controllers\Api\WishlistController::class)->only(['index', 'store', 'destroy']);
+    Route::post('/coupons/apply', [\App\Http\Controllers\Api\CouponController::class, 'apply'])->name('coupons.apply');
     Route::apiResource('orders', \App\Http\Controllers\Api\OrderController::class)->only(['index', 'show', 'store']);
     Route::post('orders/{order}/send-telegram', [\App\Http\Controllers\Api\OrderController::class, 'sendTelegramInvoice'])->name('orders.send-telegram');
     Route::apiResource('invoices', \App\Http\Controllers\Api\InvoiceController::class)->only(['index', 'show']);

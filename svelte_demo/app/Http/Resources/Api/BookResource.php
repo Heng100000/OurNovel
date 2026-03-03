@@ -32,6 +32,13 @@ class BookResource extends JsonResource
             'user_rating' => $this->whenLoaded('reviews', function () {
                 return $this->reviews->firstWhere('user_id', auth('sanctum')->id())?->rating;
             }),
+            'primary_image' => $this->whenLoaded('images', function() {
+                $primary = $this->images->firstWhere('is_primary', true) ?: $this->images->first();
+                return $primary ? [
+                    'id' => $primary->id,
+                    'image_url' => $primary->getOptimizedImageUrl($primary->image_url, width: 600),
+                ] : null;
+            }),
             'author' => new AuthorResource($this->whenLoaded('author')),
             'category' => new CategoryResource($this->whenLoaded('category')),
             'promotion' => $this->whenLoaded('promotion'),
