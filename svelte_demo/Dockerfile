@@ -1,9 +1,37 @@
 # Stage 1: Frontend Build
-FROM node:20-alpine AS build-stage
+FROM php:8.4-cli AS build-stage
+
+# Install system dependencies for Node and PHP
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
+    unzip \
+    libzip-dev \
+    libicu-dev \
+    nodejs \
+    npm \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install PHP extensions needed for Laravel core
+RUN docker-php-ext-install mbstring exif pcntl bcmath gd intl zip
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
 WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-interaction --no-scripts --no-autoloader
+
 COPY package*.json ./
 RUN npm install
+
 COPY . .
+
+# Run build (which needs php for wayfinder)
 RUN npm run build
 
 # Stage 2: Final Image
