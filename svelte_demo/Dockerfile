@@ -12,26 +12,37 @@ RUN apt-get update && apt-get install -y \
     unzip \
     libzip-dev \
     libicu-dev \
+    libpq-dev \
     nodejs \
     npm \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions needed for Laravel core
-RUN docker-php-ext-install mbstring exif pcntl bcmath gd intl zip
+# Install PHP extensions needed for Laravel core and booting
+RUN docker-php-ext-install pdo_mysql pdo_pgsql pgsql mbstring exif pcntl bcmath gd intl zip
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
+
+# Copy only composer files first for better caching
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-interaction --no-scripts --no-autoloader
 
+# Copy node files and install
 COPY package*.json ./
 RUN npm install
 
+# Copy the rest of the application
 COPY . .
 
-# Run build (which needs php for wayfinder)
+# Use the production environment file (needed for artisan commands)
+RUN cp .env.pro .env
+
+# Finish composer installation (generate autoloader)
+RUN composer install --no-dev --optimize-autoloader --no-interaction
+
+# Run build (which needs php and a booted Laravel app for wayfinder)
 RUN npm run build
 
 # Stage 2: Final Image
