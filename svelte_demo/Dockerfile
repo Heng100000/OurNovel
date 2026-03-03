@@ -1,87 +1,35 @@
-# Stage 1: Frontend Build
-FROM php:8.4-cli AS build-stage
-
-# Install system dependencies for Node and PHP
-RUN apt-get update && apt-get install -y \
-    git \
-    curl \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    zip \
-    unzip \
-    libzip-dev \
-    libicu-dev \
-    libpq-dev \
-    nodejs \
-    npm \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Install PHP extensions needed for Laravel core and booting
-RUN docker-php-ext-install pdo_mysql pdo_pgsql pgsql mbstring exif pcntl bcmath gd intl zip
-
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-WORKDIR /app
-
-# Copy only composer files first for better caching
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-interaction --no-scripts --no-autoloader
-
-# Copy node files and install
-COPY package*.json ./
-RUN npm install
-
-# Copy the rest of the application
-COPY . .
-
-# Use the production environment file (needed for artisan commands)
-RUN cp .env.pro .env
-
-# Finish composer installation (generate autoloader)
-RUN composer install --no-dev --optimize-autoloader --no-interaction
-
-# Run build (which needs php and a booted Laravel app for wayfinder)
-RUN npm run build
-
-# Stage 2: Final Image
+# Base image
 FROM php:8.4-apache
 
-# Install system dependencies
+# Set environment variables
+ENV NODE_VERSION=20.x
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Update and install system dependencies
 RUN apt-get update && apt-get install -y \
-    git \
-    curl \
     libpng-dev \
-    libonig-dev \
-    libxml2-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libzip-dev \
     zip \
     unzip \
-    libzip-dev \
-    libicu-dev \
-    libpq-dev \
+    git \
+    curl \
     supervisor \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js and npm
+RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION} | bash - \
+    && apt-get install -y nodejs \
+    && npm install -g npm@latest
 
 # Install PHP extensions
-RUN docker-php-ext-install pdo_mysql pdo_pgsql pgsql mbstring exif pcntl bcmath gd intl zip
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install gd zip pdo pdo_mysql pdo_pgsql
 
-# Enable Apache mod_rewrite and proxy modules for WebSockets
-RUN a2enmod rewrite proxy proxy_http proxy_wstunnel
-
-# Install Ngrok
-RUN curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
-  | tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null \
-  && echo "deb https://ngrok-agent.s3.amazonaws.com buster main" \
-  | tee /etc/apt/sources.list.d/ngrok.list \
-  && apt-get update \
-  && apt-get install -y ngrok \
-  && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Modify Apache DocumentRoot to point to Laravel's public directory
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+# Enable Apache modules
+RUN a2enmod rewrite
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
