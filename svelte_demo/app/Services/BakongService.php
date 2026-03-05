@@ -117,39 +117,62 @@ class BakongService
         }
 
         try {
-            // check_transaction_by_md5 is a public endpoint — no auth token needed
-            $response = \Illuminate\Support\Facades\Http::withOptions([
-                'verify' => false,
-            ])
+            // Using Laravel Http facade to have control over SSL verification
+            $response = \Illuminate\Support\Facades\Http::withToken($this->token)
+                ->withOptions([
+                    'verify' => false,
+                ])
                 ->post('https://api-bakong.nbc.gov.kh/v1/check_transaction_by_md5', [
                     'md5' => $md5,
+                    'accountId' => $this->accountId,
                 ]);
-
-            Log::info('Bakong Check API Response', [
-                'md5' => $md5,
-                'status' => $response->status(),
-                'data' => $response->json(),
-            ]);
 
             if ($response->successful()) {
                 $data = $response->json();
-                Log::info('Bakong Check Parsed Data', ['data' => $data]);
+                Log::info('Bakong MD5 Check Response', ['id' => $md5, 'data' => $data]);
 
-                // Success: responseCode = 0 and data is not null
                 return isset($data['responseCode'])
                     && $data['responseCode'] === 0
                     && ! empty($data['data']);
             }
 
-            Log::warning('Bakong Check Request Failed', [
-                'md5' => $md5,
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
+            return false;
+        } catch (\Exception $e) {
+            Log::error('Bakong MD5 check exception', ['message' => $e->getMessage()]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Fallback: Check if a transaction identified by billNumber has been paid.
+     */
+    public function checkTransactionByBillNumber(string $billNumber): bool
+    {
+        if (empty($this->token)) {
+            return false;
+        }
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::withToken($this->token)
+                ->withOptions(['verify' => false])
+                ->post('https://api-bakong.nbc.gov.kh/v1/check_transaction_by_bill_number', [
+                    'billNumber' => $billNumber,
+                    'accountId' => $this->accountId,
+                ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                Log::info('Bakong Bill Check Response', ['bill' => $billNumber, 'data' => $data]);
+
+                return isset($data['responseCode'])
+                    && $data['responseCode'] === 0
+                    && ! empty($data['data']);
+            }
 
             return false;
         } catch (\Exception $e) {
-            Log::error('Bakong checkTransaction exception', ['message' => $e->getMessage()]);
+            Log::error('Bakong bill check exception', ['message' => $e->getMessage()]);
 
             return false;
         }
