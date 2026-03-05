@@ -37,11 +37,25 @@ class PaymentController extends Controller
     /**
      * Show a single payment.
      */
-    public function show(Payment $payment): PaymentResource
+    public function show(Payment $payment, BakongService $bakongService): PaymentResource
     {
         Log::info('Payment API Show Hit', ['payment_id' => $payment->id]);
         // Gate::before in AppServiceProvider handles admin bypass
         $this->authorize('view', $payment);
+
+        // Ensure QR data is available even for existing payments
+        if (in_array($payment->method, ['bakong', 'aba', 'aceleda']) && $payment->status === 'pending') {
+            $result = $bakongService->generateQR($payment);
+            if ($result) {
+                // We update the txn_id in case config changed, but be careful with existing payments.
+                // However, the current check logic uses txn_id from DB.
+                // If we want to support checking by MD5, we must match what's on the user's screen.
+                $payment->updateQuietly(['txn_id' => $result['md5']]);
+                $payment->qr_code = $result['qr'];
+                $payment->qr_image_url = $bakongService->getQrImageUrl($result['qr']);
+                $payment->deep_link = $bakongService->generateDeepLink($result['qr']);
+            }
+        }
 
         return new PaymentResource($payment->load('order'));
     }
@@ -136,9 +150,15 @@ class PaymentController extends Controller
             return response()->json(['paid' => false, 'message' => 'No QR generated for this payment yet.'], 422);
         }
 
-        Log::info('Bakong API polling', ['payment_id' => $payment->id]);
+        Log::info('Bakong API polling', ['payment_id' => $payment->id, 'md5' => $payment->txn_id, 'bill' => $payment->order_id]);
 
         $isPaid = $bakongService->checkTransactionByMD5($payment->txn_id);
+
+        if (! $isPaid) {
+            Log::info('MD5 check failed, trying Bill Number fallback', ['payment_id' => $payment->id]);
+            $isPaid = $bakongService->checkTransactionByBillNumber((string) $payment->order_id);
+        }
+
         Log::info('checkKhqr result', ['payment_id' => $payment->id, 'isPaid' => $isPaid]);
 
         if ($isPaid) {
