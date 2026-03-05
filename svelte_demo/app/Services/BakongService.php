@@ -117,11 +117,10 @@ class BakongService
         }
 
         try {
-            // Using Laravel Http facade to have control over SSL verification
-            $response = \Illuminate\Support\Facades\Http::withToken($this->token)
-                ->withOptions([
-                    'verify' => false, // Bakong is a trusted public API; skip SSL issues on various hosting envs
-                ])
+            // check_transaction_by_md5 is a public endpoint — no auth token needed
+            $response = \Illuminate\Support\Facades\Http::withOptions([
+                'verify' => false,
+            ])
                 ->post('https://api-bakong.nbc.gov.kh/v1/check_transaction_by_md5', [
                     'md5' => $md5,
                 ]);
