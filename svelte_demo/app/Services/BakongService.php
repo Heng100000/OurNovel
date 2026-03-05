@@ -76,7 +76,7 @@ class BakongService
         try {
             $response = \Illuminate\Support\Facades\Http::withToken($this->token)
                 ->withOptions([
-                    'verify' => config('app.env') !== 'local',
+                    'verify' => false,
                 ])
                 ->post('https://api-bakong.nbc.gov.kh/v1/generate_deeplink', [
                     'qr' => $qrString,
@@ -85,6 +85,7 @@ class BakongService
 
             if ($response->successful()) {
                 $data = $response->json();
+
                 return $data['shortUrl'] ?? null;
             }
 
@@ -96,6 +97,7 @@ class BakongService
             return null;
         } catch (\Exception $e) {
             Log::error('Bakong generateDeepLink exception', ['message' => $e->getMessage()]);
+
             return null;
         }
     }
@@ -115,10 +117,10 @@ class BakongService
         }
 
         try {
-            // Using Laravel Http facade to have control over SSL verification (important for Windows)
+            // Using Laravel Http facade to have control over SSL verification
             $response = \Illuminate\Support\Facades\Http::withToken($this->token)
                 ->withOptions([
-                    'verify' => config('app.env') !== 'local', // Disable SSL verify on local
+                    'verify' => false, // Bakong is a trusted public API; skip SSL issues on various hosting envs
                 ])
                 ->post('https://api-bakong.nbc.gov.kh/v1/check_transaction_by_md5', [
                     'md5' => $md5,

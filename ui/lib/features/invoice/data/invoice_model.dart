@@ -38,7 +38,9 @@ class InvoiceModel {
   String? get deliveryLogoUrl {
     final path = deliveryCompany?['logo_path'] as String?;
     if (path == null || path.isEmpty) return null;
-    return '${ApiConstants.baseImageUrl}/$path';
+    // Delivery logos are stored in Supabase storage
+    if (path.startsWith('http')) return path;
+    return '${ApiConstants.supabaseStorageUrl}/$path';
   }
   String get customerName => user['name'] as String? ?? 'Guest';
   String get customerEmail => user['email'] as String? ?? '';
