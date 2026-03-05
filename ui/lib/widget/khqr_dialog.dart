@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../features/payway/services/payway_service.dart';
 import '../core/widgets/global_loader.dart';
 
@@ -88,6 +89,26 @@ class _KHQRDialogState extends State<KHQRDialog> {
     });
   }
 
+  Future<void> _launchBankApp() async {
+    final String bakongUrl = "https://api-bakong.nbc.gov.kh/checkout/qr?code=${widget.qrString}";
+    final Uri url = Uri.parse(bakongUrl);
+    
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        // Fallback or show error
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Could not open bank app. Please scan the QR instead.")),
+          );
+        }
+      }
+    } catch (e) {
+       debugPrint("Launch error: $e");
+    }
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
@@ -109,90 +130,159 @@ class _KHQRDialogState extends State<KHQRDialog> {
   }
 
   Widget _buildWaitingState() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      key: const ValueKey('waiting'),
-      children: [
-        const Text(
-          "ស្កេនដើម្បីទូទាត់", // Scan to Pay
-          style: TextStyle(
-            fontFamily: 'Hanuman',
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-            color: Color(0xFF5a7335),
-          ),
-        ),
-        const SizedBox(height: 20),
-        
-        // QR Code
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[200]!, width: 2),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: SizedBox(
-            width: 200,
-            height: 200,
-            child: QrImageView(
-              data: widget.qrString,
-              version: QrVersions.auto,
-              size: 200.0,
-            ),
-          ),
-        ),
-        
-        const SizedBox(height: 10),
-        const Text(
-          "KHQR",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        
-        const SizedBox(height: 25),
-        
-        // Polling Indicator
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(
-              width: 24,
-              height: 24,
-              child: const GlobalLoader(size: 20, color: Color(0xFF5a7335)),
-            ),
-            const SizedBox(width: 15),
-            Flexible(
-              child: Text(
-                "កំពុងផ្ទៀងផ្ទាត់ការទូទាត់... ($_secondsRemaining)", // Verifying payment...
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        key: const ValueKey('waiting'),
+        children: [
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "ទូទាត់ជាមួយ KHQR", // Pay with KHQR
                 style: TextStyle(
                   fontFamily: 'Hanuman',
-                  fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey[600],
+                  fontSize: 18,
+                  color: Color(0xFF5a7335),
                 ),
               ),
-            ),
-          ],
-        ),
-        
-        const SizedBox(height: 5),
-        Text(
-          "សូមស្កេនឥឡូវនេះ (Please scan now)",
-          style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-        ),
-
-        const SizedBox(height: 20),
-        
-        // Cancel Button
-        TextButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          child: const Text(
-            "បោះបង់ (Cancel)",
-            style: TextStyle(color: Colors.red, fontFamily: 'Hanuman'),
+              IconButton(
+                icon: const Icon(Icons.close_rounded, color: Colors.grey),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
           ),
-        )
-      ],
+          const SizedBox(height: 8),
+          
+          // QR Code Section
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+              border: Border.all(color: const Color(0xFF5a7335).withOpacity(0.1)),
+            ),
+            child: Column(
+              children: [
+                SizedBox(
+                  width: 160,
+                  height: 160,
+                  child: QrImageView(
+                    data: widget.qrString,
+                    version: QrVersions.auto,
+                    size: 160.0,
+                    eyeStyle: const QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: Color(0xFF5a7335),
+                    ),
+                    dataModuleStyle: const QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  "KHQR",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900, 
+                    fontSize: 16, 
+                    letterSpacing: 1,
+                    color: Color(0xFF5a7335)
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 16),
+  
+          // Deep Link Button for Mobile Apps
+          Container(
+            width: double.infinity,
+            height: 54,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF5a7335), Color(0xFF7aad45)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF5a7335).withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ElevatedButton(
+              onPressed: _launchBankApp,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 20),
+                  SizedBox(width: 10),
+                  Text(
+                    "ទូទាត់ជាមួយកម្មវិធីធនាគារ", // Pay with Bank App
+                    style: TextStyle(
+                      fontFamily: 'Hanuman',
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 10),
+          Text(
+            "Supports ABA, ACLEDA, Wing and more",
+            style: TextStyle(fontSize: 10, color: Colors.grey[500], fontStyle: FontStyle.italic),
+          ),
+  
+          const SizedBox(height: 20),
+          
+          // Status row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: GlobalLoader(size: 16, color: Color(0xFF5a7335)),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                "កំពុងរង់ចាំការទូទាត់... ($_secondsRemaining)", // Waiting for payment...
+                style: TextStyle(
+                  fontFamily: 'Hanuman',
+                  fontSize: 12,
+                  color: Colors.grey[700],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+        ],
+      ),
     );
   }
 

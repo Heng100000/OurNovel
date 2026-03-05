@@ -127,4 +127,34 @@ class CartService {
       return false;
     }
   }
+  Future<Map<String, dynamic>?> applyCoupon(String code, double subtotal) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      if (token == null) return {'message': 'User not authenticated'};
+
+      final response = await http.post(
+        Uri.parse(ApiConstants.applyCoupon),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'code': code,
+          'subtotal': subtotal,
+        }),
+      ).timeout(const Duration(seconds: 15));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return data; // Success
+      } else {
+        return {'message': data['message'] ?? 'Failed to apply coupon'};
+      }
+    } catch (e) {
+      print('Error applying coupon: $e');
+      return {'message': 'Network error occurred'};
+    }
+  }
 }

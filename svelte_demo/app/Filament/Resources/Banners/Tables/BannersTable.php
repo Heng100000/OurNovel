@@ -17,7 +17,14 @@ class BannersTable
             ->columns([
                 TextColumn::make('title')
                     ->searchable(),
+                TextColumn::make('subtitle')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 ImageColumn::make('image_url'),
+                TextColumn::make('discount_percentage')
+                    ->numeric()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('action_type')
                     ->searchable(),
                 TextColumn::make('action_id')

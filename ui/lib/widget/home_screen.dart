@@ -235,6 +235,32 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     }
   }
 
+  void _handleBannerTap(BannerModel banner) {
+    final type = banner.actionType;
+    final id = banner.actionId;
+    final url = banner.actionUrl;
+
+    if (type == null || type == 'none') return;
+
+    if (type == 'url' && url != null && url.isNotEmpty) {
+      // Open external URL
+      // You can use url_launcher here: launchUrl(Uri.parse(url));
+      return;
+    }
+
+    if (id == null) return;
+    final itemId = int.tryParse(id);
+    if (itemId == null) return;
+
+    if (type == 'book') {
+      Navigator.pushNamed(context, '/book-description', arguments: itemId);
+    } else if (type == 'category') {
+      Navigator.pushNamed(context, '/book-store', arguments: {'categoryId': itemId});
+    } else if (type == 'promotion') {
+      Navigator.pushNamed(context, '/promotions', arguments: itemId);
+    }
+  }
+
   Future<void> _fetchNews() async {
     final news = await _newsService.getNewsAnnouncements();
     if (mounted) {
@@ -978,51 +1004,128 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   }
 
   Widget _buildDynamicBannerItem(BannerModel banner) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(24),
-        image: DecorationImage(
-          image: CachedNetworkImageProvider(banner.imageUrl),
-          fit: BoxFit.cover,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.12),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
+    final hasButton = banner.buttonText != null && banner.buttonText!.isNotEmpty;
+    final hasSubtitle = banner.subtitle != null && banner.subtitle!.isNotEmpty;
+    final hasDiscount = banner.discountPercentage != null && banner.discountPercentage! > 0;
+
+    return GestureDetector(
+      onTap: () => _handleBannerTap(banner),
       child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(
+          color: Colors.grey.shade200,
           borderRadius: BorderRadius.circular(24),
-          gradient: LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: [
-              Colors.black.withOpacity(0.65),
-              Colors.transparent,
-            ],
+          image: DecorationImage(
+            image: CachedNetworkImageProvider(banner.imageUrl),
+            fit: BoxFit.cover,
           ),
-        ),
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Text(
-              banner.title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-                fontSize: 18,
-                letterSpacing: -0.3,
-              ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
             ),
           ],
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              colors: [
+                Colors.black.withOpacity(0.70),
+                Colors.transparent,
+              ],
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Top: subtitle badge + discount badge
+              Row(
+                children: [
+                  if (hasSubtitle)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withOpacity(0.4), width: 1),
+                      ),
+                      child: Text(
+                        banner.subtitle!.toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 10,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ),
+                  if (hasDiscount) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade500,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${banner.discountPercentage}% OFF',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 10,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+
+              // Bottom: title + button
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (banner.title.isNotEmpty)
+                    Text(
+                      banner.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                        letterSpacing: -0.3,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  if (hasButton) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        banner.buttonText!,
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

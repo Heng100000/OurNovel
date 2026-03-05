@@ -35,4 +35,13 @@ class UrlUtil {
 
     return url;
   }
+
+  static String formatSupabaseImageUrl(String? path) {
+    if (path == null || path.isEmpty) return '';
+    if (path.startsWith('http')) return path;
+
+    // Ensure no leading slash in path
+    final cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    return '${ApiConstants.supabaseStorageUrl}/$cleanPath';
+  }
 }

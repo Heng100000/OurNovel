@@ -42,6 +42,7 @@ class BakongService
                 null,      // accountInformation
                 KHQRData::CURRENCY_USD,
                 (float) $payment->amount,
+                (string) $payment->order_id, // billNumber
             );
 
             $response = BakongKHQR::generateIndividual($info);
@@ -59,6 +60,42 @@ class BakongService
         } catch (\Exception $e) {
             Log::error('Bakong generateQR exception', ['message' => $e->getMessage()]);
 
+            return null;
+        }
+    }
+
+    /**
+     * Generate a proper deep link (shortUrl) for the given KHQR string.
+     */
+    public function generateDeepLink(string $qrString): ?string
+    {
+        if (empty($this->token)) {
+            return null;
+        }
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::withToken($this->token)
+                ->withOptions([
+                    'verify' => config('app.env') !== 'local',
+                ])
+                ->post('https://api-bakong.nbc.gov.kh/v1/generate_deeplink', [
+                    'qr' => $qrString,
+                    'appName' => $this->merchantName,
+                ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return $data['shortUrl'] ?? null;
+            }
+
+            Log::warning('Bakong DeepLink Request Failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return null;
+        } catch (\Exception $e) {
+            Log::error('Bakong generateDeepLink exception', ['message' => $e->getMessage()]);
             return null;
         }
     }
@@ -104,6 +141,7 @@ class BakongService
             }
 
             Log::warning('Bakong Check Request Failed', [
+                'md5' => $md5,
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);

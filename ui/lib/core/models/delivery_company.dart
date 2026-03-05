@@ -1,3 +1,6 @@
+import '../../../core/constants/api_constants.dart';
+import '../utils/url_util.dart';
+
 class ShippingRate {
   final int id;
   final int deliveryCompanyId;
@@ -58,7 +61,7 @@ class DeliveryCompany {
     return DeliveryCompany(
       id: json['id'],
       name: json['name'],
-      logoPath: json['logo_path'] ?? '',
+      logoPath: UrlUtil.formatSupabaseImageUrl(json['logo_path'] ?? ''),
       contactPhone: json['contact_phone'] ?? '',
       isActive: json['is_active'] == 1 || json['is_active'] == true,
       shippingRates: rates,
