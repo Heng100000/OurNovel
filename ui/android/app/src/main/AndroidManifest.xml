@@ -7,7 +7,8 @@
     <application
         android:label="Our Novel"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon">
+        android:icon="@mipmap/launcher_icon"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -74,6 +75,28 @@
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
+        </intent>
+        <!-- Banking App Package Visibility -->
+        <package android:name="kh.com.ababank.mobile" />
+        <package android:name="com.acledabank.mobile" />
+        <package android:name="kh.gov.nbc.bakong" />
+        <package android:name="kh.com.wingmoney.mobile" />
+        
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="aba-merchant-khqr" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="acledabank" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="bakong" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="wingmoney" />
         </intent>
         <intent>
             <action android:name="android.intent.action.VIEW" />

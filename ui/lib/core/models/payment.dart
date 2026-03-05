@@ -8,6 +8,8 @@ class Payment {
   final String status;
   final String? txnId;
   final String? qrImageUrl;
+  final String? qrCode;
+  final String? deepLink;
   final DateTime? createdAt;
 
   Payment({
@@ -18,6 +20,8 @@ class Payment {
     required this.status,
     this.txnId,
     this.qrImageUrl,
+    this.qrCode,
+    this.deepLink,
     this.createdAt,
   });
 
@@ -30,6 +34,8 @@ class Payment {
       status: json['status'],
       txnId: json['txn_id'],
       qrImageUrl: UrlUtil.formatImageUrl(json['qr_image_url']),
+      qrCode: json['qr_code'],
+      deepLink: json['deep_link'],
       createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
     );
   }

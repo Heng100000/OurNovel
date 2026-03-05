@@ -1,11 +1,12 @@
 class ApiConstants {
   // Static toggle to switch between Production and Local
-  static const bool useProduction = true;
+  static const bool useProduction = false;
 
   static const String productionUrl = 'https://ournovel.onrender.com';
 
-  // Use your computer's IP address (from ipconfig)
-  static const String localIp = '192.168.18.4'; // <--- Change this to your PC's IP
+  // For Android Emulator, use 10.0.2.2 to access your PC's localhost
+  // For iOS Simulator or Physical Device, use your computer's IP address
+  static const String localIp = '10.0.2.2'; 
 
   // Reverb / WebSocket Settings
   static const String pusherKey = 'pore5j1hjthluaf70rhh';
@@ -61,4 +62,8 @@ class ApiConstants {
   static const String userProfile = '$baseUrl/user/profile';
   // Device Endpoints
   static const String devices = '$baseUrl/devices';
+  // Coupon Endpoints
+  static const String applyCoupon = '$baseUrl/coupons/apply';
+  // Storage
+  static const String supabaseStorageUrl = 'https://ctkyoptgnsjpqnxmibyh.supabase.co/storage/v1/object/public/book-client';
 }

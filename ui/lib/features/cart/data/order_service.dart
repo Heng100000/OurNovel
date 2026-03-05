@@ -9,6 +9,7 @@ class OrderService {
     required String deliveryMethod,
     int? addressId,
     int? deliveryCompanyId,
+    String? couponCode,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -29,6 +30,7 @@ class OrderService {
           'delivery_method': deliveryMethod,
           if (addressId != null) 'address_id': addressId,
           if (deliveryCompanyId != null) 'delivery_company_id': deliveryCompanyId,
+          if (couponCode != null) 'coupon_code': couponCode,
         }),
       ).timeout(const Duration(seconds: 30));
 

@@ -95,7 +95,6 @@ class _AddressEditPageState extends State<AddressEditPage> {
 
     return Scaffold(
       backgroundColor: isDark ? theme.scaffoldBackgroundColor : const Color(0xFFF5F7F0),
-      drawer: const SideMenuDrawer(),
       appBar: AppBar(
         title: Text(
           LanguageService().translate('edit_address') ?? 'កែប្រែអាស័យដ្ឋាន',
@@ -109,11 +108,9 @@ class _AddressEditPageState extends State<AddressEditPage> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: _green),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _green, size: 20),
+          onPressed: () => Navigator.pop(context),
         ),
       ),
       body: SingleChildScrollView(

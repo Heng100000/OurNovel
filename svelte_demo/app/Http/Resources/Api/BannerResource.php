@@ -17,7 +17,11 @@ class BannerResource extends JsonResource
         return [
             'id' => $this->id,
             'title' => $this->title,
+            'subtitle' => $this->subtitle,
+            'description' => $this->description,
             'image_url' => $this->getOptimizedImageUrl($this->image_url, width: 600),
+            'discount_percentage' => $this->discount_percentage,
+            'button_text' => $this->button_text,
             'action_type' => $this->action_type,
             'action_id' => $this->action_id,
             'action_url' => $this->action_url,

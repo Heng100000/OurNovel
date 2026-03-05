@@ -79,8 +79,10 @@ class PaymentController extends Controller
             Log::info('PaymentStore: Bakong QR generated', ['elapsed' => microtime(true) - $startTime]);
             if ($result) {
                 $payment->updateQuietly(['txn_id' => $result['md5']]);
-                // Attach temporary property for Resource to use
+                // Attach temporary properties for Resource to use
+                $payment->qr_code = $result['qr'];
                 $payment->qr_image_url = $bakongService->getQrImageUrl($result['qr']);
+                $payment->deep_link = $bakongService->generateDeepLink($result['qr']);
             }
         } elseif ($payment->method === 'cash') {
             Log::info('PaymentStore: Handling Cash Payment', ['elapsed' => microtime(true) - $startTime]);
@@ -137,18 +139,21 @@ class PaymentController extends Controller
         Log::info('Bakong API polling', ['payment_id' => $payment->id]);
 
         $isPaid = $bakongService->checkTransactionByMD5($payment->txn_id);
+        Log::info('checkKhqr result', ['payment_id' => $payment->id, 'isPaid' => $isPaid]);
 
         if ($isPaid) {
+            Log::info('Updating payment and order to paid', ['payment_id' => $payment->id, 'order_id' => $payment->order_id]);
             $payment->update(['status' => 'paid']);
 
             // Get the order instance and update it to trigger observers (e.g., TelegramInvoice)
             $order = clone $payment->order;
             $order->update(['status' => 'paid']);
 
-            // Clear the user's cart now that payment is successful
+            Log::info('Clearing user cart', ['user_id' => $order->user_id]);
             \App\Models\CartItem::$isClearingAfterOrder = true;
             $order->user->cartItems()->delete();
             \App\Models\CartItem::$isClearingAfterOrder = false;
+            Log::info('Cart cleared successfully');
 
             return response()->json(['paid' => true, 'status' => 'paid']);
         }

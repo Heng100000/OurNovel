@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/widgets/global_loader.dart';
 import '../../../../core/models/payment.dart';
@@ -36,6 +38,39 @@ class _PaymentPageState extends State<PaymentPage> {
   void dispose() {
     _pollingTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _launchBankApp() async {
+    final String? deepLink = widget.payment.deepLink;
+    final String? qrCode = widget.payment.qrCode;
+
+    if (deepLink == null && qrCode == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("QR data not available. Please wait or refresh.")),
+      );
+      return;
+    }
+    
+    // Try generic bakong scheme first as it's the most universal
+    final String urlString = deepLink ?? "bakong://khqr/qr?code=$qrCode";
+    final Uri url = Uri.parse(urlString);
+    
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("មិនស្គាល់កម្មវិធីធនាគារក្នុងទូរសព្ទអ្នកឡើយ។ សូមព្យាយាមស្កែន QR ជំនួសវិញ។"),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+       debugPrint("Launch error: $e");
+    }
   }
 
   void _startPolling() {
@@ -80,19 +115,14 @@ class _PaymentPageState extends State<PaymentPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAF5), // Very light green-white background
-      drawer: const SideMenuDrawer(),
+      backgroundColor: const Color(0xFFF8FAF5),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Color(0xFF5a7335)),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF5a7335), size: 20),
+          onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           _langService.translate('scan_to_pay'),
@@ -214,19 +244,107 @@ class _PaymentPageState extends State<PaymentPage> {
                     ],
                   ),
                   
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   
-                  // Status Indicator
+                  // Bank Selection Section
+                  if (widget.payment.qrCode != null) ...[
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "ជ្រើសរើសធនាគារ (Select Bank)",
+                        style: TextStyle(
+                          fontFamily: 'Hanuman',
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[800],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildBankItem(
+                          name: "ABA",
+                          label: "ABA Mobile",
+                          color: const Color(0xFF005D7E),
+                          scheme: "aba-merchant-khqr://qr?code=${widget.payment.qrCode}",
+                        ),
+                        _buildBankItem(
+                          name: "ACLEDA",
+                          label: "ACLEDA",
+                          color: const Color(0xFF1B3C92),
+                          scheme: "acledabank://qr?code=${widget.payment.qrCode}",
+                        ),
+                        _buildBankItem(
+                          name: "Bakong",
+                          label: "Bakong",
+                          color: const Color(0xFFE41E26),
+                          scheme: "bakong://khqr/qr?code=${widget.payment.qrCode}",
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Pay with Bank App button (General)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    width: double.infinity,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF5a7335), Color(0xFF7aad45)],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF5a7335).withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: _launchBankApp,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            "បើកកម្មវិធីធនាគារផ្សេងទៀត", // Open Other Bank Apps
+                            style: TextStyle(
+                              fontFamily: 'Hanuman',
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // Status Indicator (Compact)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(100),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.03),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                          color: Colors.black.withOpacity(0.02),
+                          blurRadius: 5,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
@@ -234,17 +352,18 @@ class _PaymentPageState extends State<PaymentPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: GlobalLoader(size: 20),
+                          width: 18,
+                          height: 18,
+                          child: GlobalLoader(size: 16),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
                         Text(
                           _langService.translate('payment_pending'),
                           style: const TextStyle(
                             fontFamily: 'Hanuman',
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF636E72),
+                            fontSize: 12,
                           ),
                         ),
                       ],
@@ -336,6 +455,117 @@ class _PaymentPageState extends State<PaymentPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildBankItem({required String name, required String label, required Color color, required String scheme}) {
+    return InkWell(
+      onTap: () async {
+        final List<String> urlsToTry = [];
+        final String rawQrCode = widget.payment.qrCode ?? "";
+        final String encodedQr = Uri.encodeComponent(rawQrCode);
+        
+        // Auto-copy to clipboard for convenience (Scan from Gallery / Paste fallback)
+        await Clipboard.setData(ClipboardData(text: rawQrCode));
+        
+        if (name == "Bakong") {
+           // For Android, 'intent:' scheme is the most powerful way to force open a specific package
+           urlsToTry.add("intent://khqr/qr?code=$encodedQr#Intent;scheme=bakong;package=kh.gov.nbc.bakong;end");
+           urlsToTry.add("bakong://khqr/qr?code=$encodedQr");
+           urlsToTry.add("bakong://qr?code=$encodedQr");
+           urlsToTry.add("https://api-bakong.nbc.gov.kh/checkout/qr?code=$encodedQr");
+        } else if (name == "ABA") {
+           urlsToTry.add("intent://qr?code=$encodedQr#Intent;scheme=aba-merchant-khqr;package=kh.com.ababank.mobile;end");
+           urlsToTry.add("aba-merchant-khqr://qr?code=$encodedQr");
+        } else if (name == "ACLEDA") {
+           urlsToTry.add("intent://qr?code=$encodedQr#Intent;scheme=acledabank;package=com.acledabank.mobile;end");
+           urlsToTry.add("acledabank://qr?code=$encodedQr");
+        } else {
+           if (scheme.contains("?code=")) {
+              final String base = scheme.split("?code=")[0];
+              urlsToTry.add("$base?code=$encodedQr");
+           } else {
+              urlsToTry.add(scheme);
+           }
+        }
+
+        bool success = false;
+        
+        for (String urlString in urlsToTry) {
+          try {
+            final Uri uri = Uri.parse(urlString);
+            // Try launching as external application
+            success = await launchUrl(uri, mode: LaunchMode.externalApplication);
+            if (success) break;
+          } catch (e) {
+            debugPrint("Failed to launch $urlString: $e");
+          }
+        }
+
+        if (!success && mounted) {
+          // Final fallback for any KHQR: try the generic Bakong scheme
+          if (name != "Bakong") {
+             try {
+                success = await launchUrl(Uri.parse("bakong://khqr/qr?code=$encodedQr"), mode: LaunchMode.externalApplication);
+             } catch (_) {}
+          }
+          
+          if (!success && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("មិនអាចបើកកម្មវិធី $name បានទេ។ លេខកូដត្រូវបានចម្លង (Copied) រួចរាល់។"),
+                backgroundColor: color,
+                behavior: SnackBarBehavior.floating,
+                action: SnackBarAction(
+                  label: "Open App",
+                  textColor: Colors.white,
+                  onPressed: () {
+                    // Try to open the app gateway if possible, or just let them use the copied code
+                  },
+                ),
+              ),
+            );
+          }
+        } else if (success && mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+             const SnackBar(
+               content: Text("កំពុងបើកកម្មវិធីធនាគារ... (លេខកូដត្រូវបានចម្លងទុកជាស្រេច)"),
+               duration: Duration(seconds: 2),
+             ),
+           );
+        }
+      },
+      child: Column(
+        children: [
+          Container(
+            width: 62,
+            height: 62,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withOpacity(0.15),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+              border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+            ),
+            child: Center(
+              child: Text(
+                name[0], 
+                style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 28),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey[800], fontFamily: 'Hanuman'),
+          ),
+        ],
       ),
     );
   }

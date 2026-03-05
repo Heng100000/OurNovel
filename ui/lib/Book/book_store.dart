@@ -177,10 +177,31 @@ class _BookStorePageState extends State<BookStorePage> {
   List<Category> get _filteredCategories => _categories;
 
   List<model.Book> get _filteredBooks {
+    // When user is searching, search across ALL books regardless of selected author
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.trim();
+      final queryLower = query.toLowerCase();
+
+      bool matchText(String? text) {
+        if (text == null || text.isEmpty) return false;
+        // Direct contains check (works for Khmer Unicode)
+        if (text.contains(query)) return true;
+        // Case-insensitive for Latin/ASCII text
+        return text.toLowerCase().contains(queryLower);
+      }
+
+      return _allBooks.where((book) {
+        return matchText(book.title) ||
+            matchText(book.authorName) ||
+            matchText(book.isbn);
+      }).toList();
+    }
+
+    // No search query — filter by selected author and category as before
     if (_selectedAuthorId == null) return [];
-    
+
     final filteredByAuthor = _allBooks.where((book) => book.authorId == _selectedAuthorId).toList();
-    
+
     List<model.Book> result;
     if (_selectedCategoryIndex == 0) {
       result = filteredByAuthor;
@@ -194,15 +215,7 @@ class _BookStorePageState extends State<BookStorePage> {
       }
     }
 
-    if (_searchQuery.isEmpty) return result;
-
-    final query = _searchQuery.toLowerCase();
-    return result.where((book) {
-      final titleMatch = book.title.toLowerCase().contains(query);
-      final authorMatch = book.authorName?.toLowerCase().contains(query) ?? false;
-      final isbnMatch = book.isbn?.toLowerCase().contains(query) ?? false;
-      return titleMatch || authorMatch || isbnMatch;
-    }).toList();
+    return result;
   }
 
   @override
