@@ -8,6 +8,9 @@ import '../../../../core/models/payment.dart';
 import '../../../../l10n/language_service.dart';
 import '../../data/payment_service.dart';
 import '../../../menu/presentation/pages/menu_page.dart';
+import '../../../invoice/data/invoice_service.dart';
+import '../../../invoice/data/invoice_model.dart';
+import '../../../invoice/presentation/pages/invoice_detail_page.dart';
 
 class PaymentPage extends StatefulWidget {
   final Payment payment;
@@ -76,9 +79,9 @@ class _PaymentPageState extends State<PaymentPage> {
   void _startPolling() {
     // Initial check immediately
     _checkPaymentStatus();
-    
-    _pollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (_retryCount >= _maxRetries) {
+
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (_retryCount >= _maxRetries || _isPaid) {
         timer.cancel();
         return;
       }
@@ -91,25 +94,52 @@ class _PaymentPageState extends State<PaymentPage> {
     if (_isChecking || _isPaid) return;
 
     setState(() => _isChecking = true);
-    
-    final result = await _paymentService.checkKhqrStatus(widget.payment.id);
-    print('DEBUG: Payment Status Result: $result');
-    
-    if (mounted) {
-      setState(() {
-        _isChecking = false;
-        if (result['paid'] == true) {
+
+    try {
+      final result = await _paymentService.checkKhqrStatus(widget.payment.id);
+      debugPrint('Payment Status: $result');
+
+      if (!mounted) return;
+
+      if (result['paid'] == true) {
+        setState(() {
           _isPaid = true;
-          _pollingTimer?.cancel();
-          
-          // Auto-navigate back after 2 seconds success visibility
-          Future.delayed(const Duration(seconds: 2), () {
-            if (mounted) {
-              Navigator.pop(context, true);
-            }
-          });
-        }
-      });
+          _isChecking = false;
+        });
+        _pollingTimer?.cancel();
+
+        // Navigate to invoice after 2 seconds
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) _navigateToInvoice();
+        });
+      } else {
+        if (mounted) setState(() => _isChecking = false);
+      }
+    } catch (e) {
+      debugPrint('Payment check error: $e');
+      if (mounted) setState(() => _isChecking = false);
+    }
+  }
+
+  Future<void> _navigateToInvoice() async {
+    try {
+      final invoices = await InvoiceService().getInvoices();
+      final invoice = invoices.firstWhere(
+        (inv) => inv.orderId == widget.payment.orderId,
+        orElse: () => invoices.first,
+      );
+      if (mounted) {
+        // Replace payment page + go to invoice detail
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => InvoiceDetailPage(invoice: invoice),
+          ),
+        );
+      }
+    } catch (_) {
+      // Fallback: just pop if invoice fetch fails
+      if (mounted) Navigator.pop(context, true);
     }
   }
 
@@ -151,10 +181,10 @@ class _PaymentPageState extends State<PaymentPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (!_isPaid) ...[
-                  // Header Section
+                  // Amount
                   Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 24),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: const Color(0xFF5a7335).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
@@ -165,7 +195,7 @@ class _PaymentPageState extends State<PaymentPage> {
                           _langService.translate('bakong_khqr'),
                           style: const TextStyle(
                             fontFamily: 'Hanuman',
-                            fontSize: 20,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF5a7335),
                           ),
@@ -175,15 +205,15 @@ class _PaymentPageState extends State<PaymentPage> {
                           _langService.translate('amount_to_pay'),
                           style: TextStyle(
                             fontFamily: 'Hanuman',
-                            color: Colors.grey[600], 
-                            fontSize: 14,
+                            color: Colors.grey[600],
+                            fontSize: 13,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           '\$${widget.payment.amount.toStringAsFixed(2)}',
                           style: const TextStyle(
-                            fontSize: 36,
+                            fontSize: 40,
                             fontWeight: FontWeight.w900,
                             color: Color(0xFF2D3436),
                             letterSpacing: -1,
@@ -192,205 +222,50 @@ class _PaymentPageState extends State<PaymentPage> {
                       ],
                     ),
                   ),
-                  
-                  // QR Code Container
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(32),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF5a7335).withOpacity(0.08),
-                              blurRadius: 40,
-                              offset: const Offset(0, 20),
-                            ),
-                          ],
-                          border: Border.all(
-                            color: const Color(0xFF5a7335).withOpacity(0.05),
-                            width: 1,
-                          ),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: widget.payment.qrImageUrl != null
-                              ? CachedNetworkImage(
-                                  imageUrl: widget.payment.qrImageUrl!,
-                                  width: 200,
-                                  height: 200,
-                                  placeholder: (context, url) => const SizedBox(
-                                    width: 200,
-                                    height: 200,
-                                    child: Center(child: GlobalLoader(size: 32)),
-                                  ),
-                                  errorWidget: (context, url, error) => Container(
-                                    width: 200,
-                                    height: 200,
-                                    color: Colors.grey[50],
-                                    child: const Icon(Icons.qr_code_2, size: 80, color: Colors.grey),
-                                  ),
-                                )
-                              : Container(
-                                  width: 200,
-                                  height: 200,
-                                  color: Colors.grey[50],
-                                  child: const Center(child: GlobalLoader(size: 32)),
-                                ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Bank Selection Section
-                  if (widget.payment.qrCode != null) ...[
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "ជ្រើសរើសធនាគារ (Select Bank)",
-                        style: TextStyle(
-                          fontFamily: 'Hanuman',
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey[800],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildBankItem(
-                          name: "ABA",
-                          label: "ABA Mobile",
-                          color: const Color(0xFF005D7E),
-                          scheme: "aba-merchant-khqr://qr?code=${widget.payment.qrCode}",
-                        ),
-                        _buildBankItem(
-                          name: "ACLEDA",
-                          label: "ACLEDA",
-                          color: const Color(0xFF1B3C92),
-                          scheme: "acledabank://qr?code=${widget.payment.qrCode}",
-                        ),
-                        _buildBankItem(
-                          name: "Bakong",
-                          label: "Bakong",
-                          color: const Color(0xFFE41E26),
-                          scheme: "bakong://khqr/qr?code=${widget.payment.qrCode}",
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                  ],
 
-                  // Pay with Bank App button (General)
+                  // QR Code
                   Container(
-                    width: double.infinity,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF5a7335), Color(0xFF7aad45)],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF5a7335).withOpacity(0.3),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: ElevatedButton(
-                      onPressed: _launchBankApp,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            "បើកកម្មវិធីធនាគារផ្សេងទៀត", // Open Other Bank Apps
-                            style: TextStyle(
-                              fontFamily: 'Hanuman',
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Status Indicator (Compact)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(100),
+                      borderRadius: BorderRadius.circular(32),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
-                          blurRadius: 5,
-                          offset: const Offset(0, 2),
+                          color: const Color(0xFF5a7335).withOpacity(0.08),
+                          blurRadius: 40,
+                          offset: const Offset(0, 20),
                         ),
                       ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: GlobalLoader(size: 16),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _langService.translate('payment_pending'),
-                          style: const TextStyle(
-                            fontFamily: 'Hanuman',
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF636E72),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 32),
-                  
-                  // Check Status Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _isChecking ? null : _checkPaymentStatus,
-                      icon: _isChecking 
-                        ? const SizedBox(width: 20, height: 20, child: GlobalLoader(size: 20))
-                        : const Icon(Icons.refresh_rounded, size: 20),
-                      label: Text(
-                        _langService.translate('check_status'),
-                        style: const TextStyle(fontFamily: 'Hanuman', fontWeight: FontWeight.bold),
+                      border: Border.all(
+                        color: const Color(0xFF5a7335).withOpacity(0.05),
+                        width: 1,
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF5a7335),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 0,
-                      ),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: widget.payment.qrImageUrl != null
+                          ? CachedNetworkImage(
+                              imageUrl: widget.payment.qrImageUrl!,
+                              width: 240,
+                              height: 240,
+                              placeholder: (context, url) => const SizedBox(
+                                width: 240,
+                                height: 240,
+                                child: Center(child: GlobalLoader(size: 40)),
+                              ),
+                              errorWidget: (context, url, error) => Container(
+                                width: 240,
+                                height: 240,
+                                color: Colors.grey[50],
+                                child: const Icon(Icons.qr_code_2, size: 80, color: Colors.grey),
+                              ),
+                            )
+                          : Container(
+                              width: 240,
+                              height: 240,
+                              color: Colors.grey[50],
+                              child: const Center(child: GlobalLoader(size: 40)),
+                            ),
                     ),
                   ),
                 ] else ...[
@@ -427,7 +302,7 @@ class _PaymentPageState extends State<PaymentPage> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Redirecting to cart...',
+                    'Redirecting to invoice...',
                     style: TextStyle(
                       fontFamily: 'Hanuman',
                       color: Colors.grey[600],
