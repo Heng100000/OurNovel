@@ -11,6 +11,7 @@ class Payment {
   final String? qrCode;
   final String? deepLink;
   final DateTime? createdAt;
+  final DateTime? expiresAt;
 
   Payment({
     required this.id,
@@ -23,6 +24,7 @@ class Payment {
     this.qrCode,
     this.deepLink,
     this.createdAt,
+    this.expiresAt,
   });
 
   factory Payment.fromJson(Map<String, dynamic> json) {
@@ -37,6 +39,7 @@ class Payment {
       qrCode: json['qr_code'],
       deepLink: json['deep_link'],
       createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
+      expiresAt: json['expires_at'] != null ? DateTime.parse(json['expires_at']) : null,
     );
   }
 }
