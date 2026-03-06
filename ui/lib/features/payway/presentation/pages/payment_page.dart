@@ -11,7 +11,7 @@ import '../../../menu/presentation/pages/menu_page.dart';
 import '../../../invoice/data/invoice_service.dart';
 import '../../../invoice/data/invoice_model.dart';
 import '../../../invoice/presentation/pages/invoice_detail_page.dart';
-import '../../../widget/cart_page.dart';
+import '../../../../widget/cart_page.dart';
 
 class PaymentPage extends StatefulWidget {
   final Payment payment;
