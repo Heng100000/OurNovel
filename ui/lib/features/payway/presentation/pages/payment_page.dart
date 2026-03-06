@@ -11,6 +11,7 @@ import '../../../menu/presentation/pages/menu_page.dart';
 import '../../../invoice/data/invoice_service.dart';
 import '../../../invoice/data/invoice_model.dart';
 import '../../../invoice/presentation/pages/invoice_detail_page.dart';
+import '../../../widget/cart_page.dart';
 
 class PaymentPage extends StatefulWidget {
   final Payment payment;
@@ -27,23 +28,60 @@ class _PaymentPageState extends State<PaymentPage> {
   
   bool _isChecking = false;
   bool _isPaid = false;
+  bool _isExpired = false;
   Timer? _pollingTimer;
+  Timer? _countdownTimer;
+  Duration _remainingTime = const Duration(minutes: 5);
   int _retryCount = 0;
   final int _maxRetries = 100; // Increased to 100 (5 minutes) for better UX
 
   @override
   void initState() {
     super.initState();
+    _isPaid = widget.payment.status == 'paid';
+    _calculateRemainingTime();
+    _startCountdown();
     _startPolling();
+  }
+
+  void _calculateRemainingTime() {
+    if (widget.payment.expiresAt != null) {
+      final now = DateTime.now();
+      _remainingTime = widget.payment.expiresAt!.difference(now);
+      if (_remainingTime.isNegative) {
+        _remainingTime = Duration.zero;
+        _isExpired = true;
+      }
+    }
+  }
+
+  void _startCountdown() {
+    if (_isExpired || _isPaid) return;
+    
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      
+      setState(() {
+        if (_remainingTime.inSeconds > 0) {
+          _remainingTime -= const Duration(seconds: 1);
+        } else {
+          _isExpired = true;
+          _countdownTimer?.cancel();
+          _pollingTimer?.cancel();
+        }
+      });
+    });
   }
 
   @override
   void dispose() {
     _pollingTimer?.cancel();
+    _countdownTimer?.cancel();
     super.dispose();
   }
 
   Future<void> _launchBankApp() async {
+    if (_isExpired) return;
     final String? deepLink = widget.payment.deepLink;
     final String? qrCode = widget.payment.qrCode;
 
@@ -105,6 +143,7 @@ class _PaymentPageState extends State<PaymentPage> {
         setState(() {
           _isPaid = true;
           _isChecking = false;
+          _countdownTimer?.cancel();
         });
         _pollingTimer?.cancel();
 
@@ -180,7 +219,7 @@ class _PaymentPageState extends State<PaymentPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (!_isPaid) ...[
+                if (!_isPaid && !_isExpired) ...[
                   // Amount
                   Container(
                     margin: const EdgeInsets.only(bottom: 24),
@@ -243,31 +282,99 @@ class _PaymentPageState extends State<PaymentPage> {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
-                      child: widget.payment.qrImageUrl != null
-                          ? CachedNetworkImage(
-                              imageUrl: widget.payment.qrImageUrl!,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Opacity(
+                            opacity: _isExpired ? 0.3 : 1.0,
+                            child: widget.payment.qrImageUrl != null
+                                ? CachedNetworkImage(
+                                    imageUrl: widget.payment.qrImageUrl!,
+                                    width: 240,
+                                    height: 240,
+                                    placeholder: (context, url) => const SizedBox(
+                                      width: 240,
+                                      height: 240,
+                                      child: Center(child: GlobalLoader(size: 40)),
+                                    ),
+                                    errorWidget: (context, url, error) => Container(
+                                      width: 240,
+                                      height: 240,
+                                      color: Colors.grey[50],
+                                      child: const Icon(Icons.qr_code_2, size: 80, color: Colors.grey),
+                                    ),
+                                  )
+                                : Container(
+                                    width: 240,
+                                    height: 240,
+                                    color: Colors.grey[50],
+                                    child: const Center(child: GlobalLoader(size: 40)),
+                                  ),
+                          ),
+                          if (_isExpired)
+                            Container(
                               width: 240,
                               height: 240,
-                              placeholder: (context, url) => const SizedBox(
-                                width: 240,
-                                height: 240,
-                                child: Center(child: GlobalLoader(size: 40)),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                              errorWidget: (context, url, error) => Container(
-                                width: 240,
-                                height: 240,
-                                color: Colors.grey[50],
-                                child: const Icon(Icons.qr_code_2, size: 80, color: Colors.grey),
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.timer_off_rounded, color: Colors.red.withOpacity(0.8), size: 60),
+                                    const SizedBox(height: 8),
+                                    const Text(
+                                      'Expired',
+                                      style: TextStyle(
+                                        color: Colors.red,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 20,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            )
-                          : Container(
-                              width: 240,
-                              height: 240,
-                              color: Colors.grey[50],
-                              child: const Center(child: GlobalLoader(size: 40)),
                             ),
+                        ],
+                      ),
                     ),
                   ),
+
+                  // Timer Display
+                  const SizedBox(height: 24),
+                  if (!_isExpired)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(
+                          color: _remainingTime.inSeconds < 60 ? Colors.red.withOpacity(0.3) : const Color(0xFF5a7335).withOpacity(0.3),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.timer_outlined, 
+                            size: 18, 
+                            color: _remainingTime.inSeconds < 60 ? Colors.red : const Color(0xFF5a7335),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Expires in: ${_remainingTime.inMinutes.toString().padLeft(2, '0')}:${(_remainingTime.inSeconds % 60).toString().padLeft(2, '0')}',
+                            style: TextStyle(
+                              fontFamily: 'Hanuman',
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: _remainingTime.inSeconds < 60 ? Colors.red : const Color(0xFF5a7335),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ] else ...[
                   // Celebrate Success
                   TweenAnimationBuilder<double>(
@@ -286,23 +393,27 @@ class _PaymentPageState extends State<PaymentPage> {
                         color: Colors.green.withOpacity(0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.check_circle_rounded, size: 120, color: Colors.green),
+                    child: Icon(
+                        _isPaid ? Icons.check_circle_rounded : Icons.timer_off_rounded, 
+                        size: 120, 
+                        color: _isPaid ? Colors.green : Colors.red
+                      ),
                     ),
                   ),
                   const SizedBox(height: 32),
                   Text(
-                    _langService.translate('payment_success'),
+                    _isPaid ? _langService.translate('payment_success') : 'QR Code Expired',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Hanuman',
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF2D3436),
+                      color: _isPaid ? Colors.green : Colors.red,
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Redirecting to invoice...',
+                    _isPaid ? 'Redirecting to invoice...' : 'Please go back to cart to checkout again.',
                     style: TextStyle(
                       fontFamily: 'Hanuman',
                       color: Colors.grey[600],
@@ -312,15 +423,32 @@ class _PaymentPageState extends State<PaymentPage> {
                   const SizedBox(height: 48),
                   SizedBox(
                     width: double.infinity,
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context, true),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (_isPaid) {
+                           _navigateToInvoice();
+                        } else {
+                           Navigator.of(context).pushAndRemoveUntil(
+                             MaterialPageRoute(builder: (context) => const CartPage()),
+                             (route) => false,
+                           );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF5a7335),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
                       child: Text(
-                        _langService.translate('close'),
+                        _isPaid ? 'View Invoice' : 'Back to Cart',
                         style: const TextStyle(
                           fontFamily: 'Hanuman',
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF5a7335),
                         ),
                       ),
                     ),

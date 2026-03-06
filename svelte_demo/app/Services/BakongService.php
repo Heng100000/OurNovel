@@ -78,6 +78,7 @@ class BakongService
                 ->withOptions([
                     'verify' => false,
                 ])
+                ->timeout(5)
                 ->post('https://api-bakong.nbc.gov.kh/v1/generate_deeplink', [
                     'qr' => $qrString,
                     'appName' => $this->merchantName,
@@ -122,6 +123,7 @@ class BakongService
                 ->withOptions([
                     'verify' => false,
                 ])
+                ->timeout(5)
                 ->post('https://api-bakong.nbc.gov.kh/v1/check_transaction_by_md5', [
                     'md5' => $md5,
                     'accountId' => $this->accountId,
@@ -156,6 +158,7 @@ class BakongService
         try {
             $response = \Illuminate\Support\Facades\Http::withToken($this->token)
                 ->withOptions(['verify' => false])
+                ->timeout(5)
                 ->post('https://api-bakong.nbc.gov.kh/v1/check_transaction_by_bill_number', [
                     'billNumber' => $billNumber,
                     'accountId' => $this->accountId,
