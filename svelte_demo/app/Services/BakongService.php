@@ -129,9 +129,14 @@ class BakongService
                     'accountId' => $this->accountId,
                 ]);
 
+            Log::info('Bakong MD5 Check Raw Response', [
+                'id' => $md5,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
             if ($response->successful()) {
                 $data = $response->json();
-                Log::info('Bakong MD5 Check Response', ['id' => $md5, 'data' => $data]);
 
                 return isset($data['responseCode'])
                     && $data['responseCode'] === 0
@@ -164,9 +169,14 @@ class BakongService
                     'accountId' => $this->accountId,
                 ]);
 
+            Log::info('Bakong Bill Check Raw Response', [
+                'bill' => $billNumber,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
             if ($response->successful()) {
                 $data = $response->json();
-                Log::info('Bakong Bill Check Response', ['bill' => $billNumber, 'data' => $data]);
 
                 return isset($data['responseCode'])
                     && $data['responseCode'] === 0
