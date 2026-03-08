@@ -685,13 +685,9 @@ class _CartPageState extends State<CartPage> {
 
                             const SizedBox(height: 32),
                             
-                            // Promo Code Section
-                            _buildPromoCodeSection(),
 
                             const SizedBox(height: 32),
                             
-                            // Order Summary
-                            _buildOrderSummary(),
 
                             const SizedBox(height: 120), // Space for bottom bar
                           ],
@@ -700,162 +696,8 @@ class _CartPageState extends State<CartPage> {
             ),
           ),
 
-          // Pinned Checkout Bar with Order Summary
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: theme.cardColor,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(30)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 20,
-                  offset: const Offset(0, -5),
-                ),
-              ],
-            ),
-            child: SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Payment Method Selector
-                  _buildPaymentTypeSelector(),
-                  const SizedBox(height: 15),
-
-                  // Order Summary inside Bottom Sheet
-                  // Collapsible Header
-                  InkWell(
-                    onTap: () {
-                      setState(() {
-                        _isSummaryExpanded = !_isSummaryExpanded;
-                      });
-                    },
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          LanguageService().translate('order_summary'),
-                          style: TextStyle(
-                            fontFamily: 'Hanuman',
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: theme.textTheme.bodyLarge?.color,
-                          ),
-                        ),
-                        Icon(
-                          _isSummaryExpanded
-                              ? Icons.keyboard_arrow_down_rounded
-                              : Icons.keyboard_arrow_up_rounded,
-                          color: const Color(0xFF5a7335),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Collapsible Content
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    child: SizedBox(
-                      height: _isSummaryExpanded ? null : 0,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 15),
-                          _buildSummaryRow(
-                              LanguageService().translate('subtotal'),
-                              _subtotal),
-                          if (_discountAmount > 0) ...[
-                            const SizedBox(height: 8),
-                            _buildSummaryRow(
-                                LanguageService().translate('discount') ?? 'Discount',
-                                _discountAmount,
-                                isDiscount: true),
-                          ],
-                          const SizedBox(height: 8),
-                          _buildSummaryRow(
-                              LanguageService().translate('delivery_fee'),
-                              _deliveryFee),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                            child: Divider(),
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                LanguageService().translate('total'),
-                                style: TextStyle(
-                                  fontFamily: 'Hanuman',
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.textTheme.bodyLarge?.color,
-                                ),
-                              ),
-                              Text(
-                                "\$${_totalPrice.toStringAsFixed(2)}",
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF5a7335),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Checkout Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: ElevatedButton(
-                      onPressed: _cartItems.isEmpty ? null : _handleCheckout,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF5a7335),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                      ),
-                      child: Ink(
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF5a7335), Color(0xFF718F42)],
-                          ),
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: Container(
-                          alignment: Alignment.center,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                LanguageService().translate('checkout'),
-                                style: const TextStyle(
-                                  fontFamily: 'Hanuman',
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              const Icon(Icons.arrow_forward_rounded, size: 20),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          // Pinned Checkout Bar
+          _buildCheckoutBar(),
         ],
       ),
     );
@@ -1513,109 +1355,6 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-  Widget _buildOrderSummary() {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: isDark ? Colors.black26 : Colors.black.withOpacity(0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 16),
-            child: Row(
-              children: [
-                const Icon(Icons.receipt_long_rounded, color: Color(0xFF5a7335), size: 20),
-                const SizedBox(width: 12),
-                Text(
-                  LanguageService().translate("order_summary") ?? "សង្ខេបការបញ្ជាទិញ",
-                  style: const TextStyle(
-                    fontFamily: 'Hanuman',
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              children: [
-                _buildSummaryRow(LanguageService().translate('subtotal'), _subtotal),
-                const SizedBox(height: 14),
-                if (_discountAmount > 0) ...[
-                  _buildSummaryRow(
-                    LanguageService().translate('discount') ?? 'Discount',
-                    _discountAmount,
-                    isDiscount: true,
-                  ),
-                  const SizedBox(height: 14),
-                ],
-                _buildSummaryRow(LanguageService().translate('delivery_fee'), _deliveryFee),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: const Color(0xFF5a7335).withOpacity(0.08),
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      LanguageService().translate("total_amount") ?? "ទឹកប្រាក់សរុប",
-                      style: TextStyle(
-                        fontFamily: 'Hanuman',
-                        fontSize: 13,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      "Total Amount",
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  "\$${_totalPrice.toStringAsFixed(2)}",
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF5a7335),
-                    letterSpacing: -1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSummaryRow(String label, double value,
       {bool isDiscount = false}) {
     final theme = Theme.of(context);
@@ -1646,6 +1385,7 @@ class _CartPageState extends State<CartPage> {
     return Container(
       decoration: BoxDecoration(
         color: theme.cardColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
@@ -1653,83 +1393,137 @@ class _CartPageState extends State<CartPage> {
             offset: const Offset(0, -5),
           ),
         ],
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
       ),
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 30),
       child: SafeArea(
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  LanguageService().translate('total') ?? "សរុប",
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 12,
-                    fontFamily: 'Hanuman',
+            // Promo Code Section
+            _buildPromoCodeSection(),
+            const SizedBox(height: 16),
+            
+            // Payment Method Selector
+            _buildPaymentTypeSelector(),
+            const SizedBox(height: 15),
+
+            // Order Summary toggle
+            InkWell(
+              onTap: () {
+                setState(() {
+                  _isSummaryExpanded = !_isSummaryExpanded;
+                });
+              },
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    LanguageService().translate('order_summary'),
+                    style: TextStyle(
+                      fontFamily: 'Hanuman',
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: theme.textTheme.bodyLarge?.color,
+                    ),
                   ),
-                ),
-                Text(
-                  "\$${_totalPrice.toStringAsFixed(2)}",
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                    color: Color(0xFF5E7D32),
+                  Icon(
+                    _isSummaryExpanded
+                        ? Icons.keyboard_arrow_down_rounded
+                        : Icons.keyboard_arrow_up_rounded,
+                    color: const Color(0xFF5a7335),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: Container(
-                height: 56,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: _cartItems.isEmpty 
-                        ? [Colors.grey.shade400, Colors.grey.shade500]
-                        : [const Color(0xFF5a7335), const Color(0xFF7aad45)],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: _cartItems.isEmpty ? [] : [
-                    BoxShadow(
-                      color: const Color(0xFF5a7335).withOpacity(0.3),
-                      blurRadius: 15,
-                      offset: const Offset(0, 6),
+            
+            // Collapsible Summary
+            AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              child: SizedBox(
+                height: _isSummaryExpanded ? null : 0,
+                child: Column(
+                  children: [
+                    const SizedBox(height: 15),
+                    _buildSummaryRow(LanguageService().translate('subtotal'), _subtotal),
+                    if (_discountAmount > 0) ...[
+                      const SizedBox(height: 8),
+                      _buildSummaryRow(
+                          LanguageService().translate('discount') ?? 'Discount',
+                          _discountAmount,
+                          isDiscount: true),
+                    ],
+                    const SizedBox(height: 8),
+                    _buildSummaryRow(LanguageService().translate('delivery_fee'), _deliveryFee),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Divider(),
                     ),
                   ],
                 ),
-                child: ElevatedButton(
-                  onPressed: _cartItems.isEmpty ? null : _handleCheckout,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    foregroundColor: Colors.white,
-                    shadowColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(
+              ),
+            ),
+
+            // Total and Checkout Button
+            Row(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      LanguageService().translate('total') ?? "សរុប",
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12, fontFamily: 'Hanuman'),
+                    ),
+                    Text(
+                      "\$${_totalPrice.toStringAsFixed(2)}",
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Color(0xFF5E7D32)),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Container(
+                    height: 56,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: _cartItems.isEmpty 
+                            ? [Colors.grey.shade400, Colors.grey.shade500]
+                            : [const Color(0xFF5a7335), const Color(0xFF7aad45)],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
                       borderRadius: BorderRadius.circular(18),
+                      boxShadow: _cartItems.isEmpty ? [] : [
+                        BoxShadow(
+                          color: const Color(0xFF5a7335).withOpacity(0.3),
+                          blurRadius: 15,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: _cartItems.isEmpty ? null : _handleCheckout,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            LanguageService().translate('checkout') ?? "ទូទាត់ប្រាក់",
+                            style: const TextStyle(fontFamily: 'Hanuman', fontSize: 17, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                          ),
+                          const SizedBox(width: 10),
+                          const Icon(Icons.arrow_forward_rounded, size: 20),
+                        ],
+                      ),
                     ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        LanguageService().translate('checkout') ?? "ទូទាត់ប្រាក់",
-                        style: const TextStyle(
-                          fontFamily: 'Hanuman',
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Icon(Icons.arrow_forward_rounded, size: 20),
-                    ],
-                  ),
                 ),
-              ),
+              ],
             ),
           ],
         ),
@@ -1764,203 +1558,101 @@ class _CartPageState extends State<CartPage> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: isDark ? Colors.black26 : const Color(0xFF5a7335).withOpacity(0.08),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
+    return Column(
+      children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          height: 52,
+          decoration: BoxDecoration(
+            color: isDark ? Colors.grey[900] : Colors.grey[100],
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _appliedCouponCode != null 
+                  ? Colors.green.withOpacity(0.5) 
+                  : Colors.grey.withOpacity(0.2),
+              width: 1.5,
+            ),
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF5a7335).withOpacity(0.05),
-                border: Border(
-                  bottom: BorderSide(
-                    color: const Color(0xFF5a7335).withOpacity(0.1),
-                    width: 1,
+          child: Row(
+            children: [
+              const SizedBox(width: 14),
+              Icon(
+                _appliedCouponCode != null ? Icons.verified_rounded : Icons.confirmation_num_outlined,
+                size: 20,
+                color: _appliedCouponCode != null ? Colors.green : Colors.grey[600],
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextField(
+                  controller: _couponController,
+                  enabled: _appliedCouponCode == null,
+                  decoration: InputDecoration(
+                    hintText: LanguageService().translate('enter_code') ?? 'Promo Code',
+                    hintStyle: TextStyle(color: Colors.grey[500], fontSize: 13, fontFamily: 'Hanuman'),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  style: TextStyle(
+                    fontSize: 14, 
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Hanuman',
+                    color: theme.textTheme.bodyLarge?.color,
                   ),
                 ),
               ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
+              if (_appliedCouponCode == null)
+                Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFF5a7335).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
+                      color: const Color(0xFF5a7335),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.confirmation_num_outlined, 
-                        color: Color(0xFF5a7335), size: 18),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    LanguageService().translate('promo_code_title') ?? 'Have a Promo Code?',
-                    style: const TextStyle(
-                      fontFamily: 'Hanuman',
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: Color(0xFF5a7335),
+                    child: IconButton(
+                      onPressed: _isApplyingCoupon ? null : _applyCoupon,
+                      icon: _isApplyingCoupon 
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.arrow_forward_rounded, size: 18, color: Colors.white),
+                      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                      padding: EdgeInsets.zero,
                     ),
                   ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          height: 54,
-                          padding: const EdgeInsets.symmetric(horizontal: 18),
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.grey[900] : Colors.grey[50],
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(
-                              color: _appliedCouponCode != null 
-                                  ? Colors.green.withOpacity(0.3) 
-                                  : Colors.grey.withOpacity(0.15),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: TextField(
-                            controller: _couponController,
-                            enabled: _appliedCouponCode == null,
-                            decoration: InputDecoration(
-                              hintText: LanguageService().translate('enter_code') ?? 'Enter Code',
-                              hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
-                              border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                            style: const TextStyle(
-                              fontSize: 14, 
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      SizedBox(
-                        height: 54,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF5a7335), Color(0xFF7aad45)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(18),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF5a7335).withOpacity(0.3),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: ElevatedButton(
-                            onPressed: _isApplyingCoupon || _appliedCouponCode != null ? null : _applyCoupon,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              foregroundColor: Colors.white,
-                              shadowColor: Colors.transparent,
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                            ),
-                            child: _isApplyingCoupon 
-                              ? const SizedBox(
-                                  width: 20, 
-                                  height: 20, 
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2, 
-                                    color: Colors.white
-                                  )
-                                )
-                              : const Icon(Icons.arrow_forward_rounded),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (_appliedCouponCode != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 14),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.green.withOpacity(0.2)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.check_circle_rounded, color: Colors.green, size: 20),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Coupon Applied!',
-                                    style: TextStyle(
-                                      color: Colors.green[800], 
-                                      fontSize: 13, 
-                                      fontWeight: FontWeight.bold
-                                    ),
-                                  ),
-                                  Text(
-                                    'Saved \$${_discountAmount.toStringAsFixed(2)} with "$_appliedCouponCode"',
-                                    style: TextStyle(color: Colors.green[700], fontSize: 11),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(10),
-                                onTap: () {
-                                  setState(() {
-                                    _appliedCouponCode = null;
-                                    _discountAmount = 0.0;
-                                    _couponController.clear();
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Icon(Icons.close_rounded, color: Colors.red, size: 16),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
+                )
+              else
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _appliedCouponCode = null;
+                      _discountAmount = 0.0;
+                      _couponController.clear();
+                    });
+                  },
+                  icon: const Icon(Icons.cancel_rounded, color: Colors.red, size: 22),
+                ),
+              const SizedBox(width: 6),
+            ],
+          ),
         ),
-      ),
+        if (_appliedCouponCode != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8, left: 4),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.green, size: 14),
+                const SizedBox(width: 6),
+                Text(
+                  'Saved \$${_discountAmount.toStringAsFixed(2)} with "$_appliedCouponCode"',
+                  style: const TextStyle(
+                    color: Colors.green, 
+                    fontSize: 12, 
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'Hanuman'
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }
