@@ -135,11 +135,20 @@ class _PaymentPageState extends State<PaymentPage> {
     setState(() => _isChecking = true);
 
     try {
-      setState(() => _debugStatus = "Checking server...");
-      final result = await _paymentService.checkKhqrStatus(widget.payment.id);
-      debugPrint('Payment Status: $result');
+      setState(() => _debugStatus = "Checking server (ID: ${widget.payment.id})...");
+      
+      final response = await http.get(
+        Uri.parse('${ApiConstants.payments}/${widget.payment.id}/check-khqr'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer ${await _getToken()}',
+        },
+      ).timeout(const Duration(seconds: 15));
 
       if (!mounted) return;
+      
+      debugPrint('Raw Response (${response.statusCode}): ${response.body}');
+      final Map<String, dynamic> result = json.decode(response.body);
 
       if (result['paid'] == true) {
         setState(() {
@@ -150,14 +159,17 @@ class _PaymentPageState extends State<PaymentPage> {
         });
         _pollingTimer?.cancel();
 
-        // Navigate to invoice after 2 seconds
         Future.delayed(const Duration(seconds: 2), () {
           if (mounted) _navigateToInvoice();
         });
       } else {
         if (mounted) setState(() {
           _isChecking = false;
-          _debugStatus = "Not paid (status: ${result['status']})";
+          _debugStatus = "Pending: ${result['status'] ?? 'unknown'}";
+          // If body is unexpectedly large or different, show a snippet
+          if (response.body.length > 100) {
+            _debugStatus += " (Body: ${response.body.substring(0, 50)}...)";
+          }
         });
       }
     } catch (e) {
@@ -167,6 +179,11 @@ class _PaymentPageState extends State<PaymentPage> {
         _debugStatus = "Error: ${e.toString().split('\n').first}";
       });
     }
+  }
+
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token');
   }
 
   Future<void> _navigateToInvoice() async {
