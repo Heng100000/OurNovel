@@ -116,22 +116,32 @@ class BakongService
         }
 
         try {
-            $bakong = new \KHQR\BakongKHQR($this->token);
-            // The SDK returns an array with 'responseCode', 'responseMessage', etc.
-            $response = $bakong->checkTransactionByMD5($md5);
+            $response = \Illuminate\Support\Facades\Http::withToken($this->token)
+                ->withHeaders([
+                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept' => 'application/json',
+                ])
+                ->withOptions(['verify' => false])
+                ->timeout(10)
+                ->post('https://api-bakong.nbc.gov.kh/v1/check_transaction_by_md5', [
+                    'md5' => $md5,
+                ]);
 
-            Log::info('Bakong SDK MD5 Check Response', [
+            $result = $response->json();
+
+            Log::info('Bakong MD5 Check Response', [
                 'md5' => $md5,
-                'response' => $response,
+                'status' => $response->status(),
+                'response' => $result,
                 'account_id' => $this->accountId,
             ]);
 
-            if (isset($response['responseCode']) && $response['responseCode'] === 0 && !empty($response['data'])) {
+            if ($response->successful() && isset($result['responseCode']) && $result['responseCode'] === 0 && !empty($result['data'])) {
                 Log::info('Bakong MD5 Check: PAID SUCCESS', ['id' => $md5]);
                 return ['success' => true, 'message' => 'Paid'];
             }
 
-            $msg = $response['responseMessage'] ?? ($response['message'] ?? 'Not found');
+            $msg = $result['responseMessage'] ?? ($result['message'] ?? 'Not found');
             return ['success' => false, 'message' => $msg];
         } catch (\Exception $e) {
             Log::error('Bakong MD5 check exception', ['message' => $e->getMessage()]);
@@ -152,21 +162,31 @@ class BakongService
         }
 
         try {
-            $bakong = new \KHQR\BakongKHQR($this->token);
-            // Bakong API often maps externalRef to the billNumber provided in QR
-            $response = $bakong->checkTransactionByExternalReference($billNumber);
+            $response = \Illuminate\Support\Facades\Http::withToken($this->token)
+                ->withHeaders([
+                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept' => 'application/json',
+                ])
+                ->withOptions(['verify' => false])
+                ->timeout(10)
+                ->post('https://api-bakong.nbc.gov.kh/v1/check_transaction_by_external_ref', [
+                    'externalRef' => $billNumber,
+                ]);
 
-            Log::info('Bakong SDK External Ref Check Response', [
+            $result = $response->json();
+
+            Log::info('Bakong External Ref Check Response', [
                 'bill' => $billNumber,
-                'response' => $response,
+                'status' => $response->status(),
+                'response' => $result,
             ]);
 
-            if (isset($response['responseCode']) && $response['responseCode'] === 0 && !empty($response['data'])) {
+            if ($response->successful() && isset($result['responseCode']) && $result['responseCode'] === 0 && !empty($result['data'])) {
                 Log::info('Bakong External Ref Check: PAID SUCCESS', ['bill' => $billNumber]);
                 return ['success' => true, 'message' => 'Paid'];
             }
 
-            $msg = $response['responseMessage'] ?? ($response['message'] ?? 'Not found');
+            $msg = $result['responseMessage'] ?? ($result['message'] ?? 'Not found');
             return ['success' => false, 'message' => "Ref Check: $msg"];
         } catch (\Exception $e) {
             Log::error('Bakong bill check exception', ['message' => $e->getMessage()]);
