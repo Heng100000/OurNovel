@@ -109,12 +109,10 @@ class BakongService
      *   ['responseCode' => 0, 'data' => [...]] on success
      *   ['responseCode' => 1, ...] on not found / unpaid
      */
-    public function checkTransactionByMD5(string $md5): bool
+    public function checkTransactionByMD5(string $md5): array
     {
         if (empty($this->token)) {
-            Log::error('Bakong token is not configured.');
-
-            return false;
+            return ['success' => false, 'message' => 'Bakong token not configured'];
         }
 
         try {
@@ -129,6 +127,9 @@ class BakongService
                     'accountId' => $this->accountId,
                 ]);
 
+            $body = $response->json();
+            $msg = $body['responseMessage'] ?? ($body['message'] ?? 'Unknown error');
+
             Log::info('Bakong MD5 Check Raw Response', [
                 'id' => $md5,
                 'status' => $response->status(),
@@ -138,15 +139,13 @@ class BakongService
             ]);
 
             if ($response->successful()) {
-                $data = $response->json();
-                
-                if (isset($data['responseCode']) && $data['responseCode'] === 0 && !empty($data['data'])) {
+                if (isset($body['responseCode']) && $body['responseCode'] === 0 && !empty($body['data'])) {
                     Log::info('Bakong MD5 Check: PAID SUCCESS', ['id' => $md5]);
-                    return true;
+                    return ['success' => true, 'message' => 'Paid'];
                 }
                 
-                Log::info('Bakong MD5 Check: NOT PAID', ['id' => $md5, 'responseCode' => $data['responseCode'] ?? 'N/A']);
-                return false;
+                Log::info('Bakong MD5 Check: NOT PAID', ['id' => $md5, 'responseCode' => $body['responseCode'] ?? 'N/A']);
+                return ['success' => false, 'message' => $msg];
             }
 
             Log::error('Bakong MD5 Check Request Failed', [
@@ -154,21 +153,20 @@ class BakongService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
-            return false;
+            return ['success' => false, 'message' => "HTTP {$response->status()}: $msg"];
         } catch (\Exception $e) {
             Log::error('Bakong MD5 check exception', ['message' => $e->getMessage()]);
-
-            return false;
+            return ['success' => false, 'message' => $e->getMessage()];
         }
     }
 
     /**
      * Fallback: Check if a transaction identified by billNumber has been paid.
      */
-    public function checkTransactionByBillNumber(string $billNumber): bool
+    public function checkTransactionByBillNumber(string $billNumber): array
     {
         if (empty($this->token)) {
-            return false;
+            return ['success' => false, 'message' => 'Bakong token not configured'];
         }
 
         try {
@@ -180,6 +178,9 @@ class BakongService
                     'accountId' => $this->accountId,
                 ]);
 
+            $body = $response->json();
+            $msg = $body['responseMessage'] ?? ($body['message'] ?? 'Unknown error');
+
             Log::info('Bakong Bill Check Raw Response', [
                 'bill' => $billNumber,
                 'status' => $response->status(),
@@ -187,15 +188,13 @@ class BakongService
             ]);
 
             if ($response->successful()) {
-                $data = $response->json();
-
-                if (isset($data['responseCode']) && $data['responseCode'] === 0 && !empty($data['data'])) {
+                if (isset($body['responseCode']) && $body['responseCode'] === 0 && !empty($body['data'])) {
                     Log::info('Bakong Bill Check: PAID SUCCESS', ['bill' => $billNumber]);
-                    return true;
+                    return ['success' => true, 'message' => 'Paid'];
                 }
                 
-                Log::info('Bakong Bill Check: NOT PAID', ['bill' => $billNumber, 'responseCode' => $data['responseCode'] ?? 'N/A']);
-                return false;
+                Log::info('Bakong Bill Check: NOT PAID', ['bill' => $billNumber, 'responseCode' => $body['responseCode'] ?? 'N/A']);
+                return ['success' => false, 'message' => $msg];
             }
 
             Log::error('Bakong Bill Check Request Failed', [
@@ -203,11 +202,11 @@ class BakongService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
-            return false;
+            return ['success' => false, 'message' => "HTTP {$response->status()}: $msg"];
         } catch (\Exception $e) {
             Log::error('Bakong bill check exception', ['message' => $e->getMessage()]);
 
-            return false;
+            return ['success' => false, 'message' => $e->getMessage()];
         }
     }
 

@@ -152,14 +152,23 @@ class PaymentController extends Controller
 
         Log::info('Bakong API polling', ['payment_id' => $payment->id, 'md5' => $payment->txn_id, 'bill' => $payment->order_id]);
 
-        $isPaid = $bakongService->checkTransactionByMD5($payment->txn_id);
+        $checkResult = $bakongService->checkTransactionByMD5($payment->txn_id);
+        $isPaid = $checkResult['success'];
+        $bakongMsg = $checkResult['message'];
 
         if (! $isPaid) {
-            Log::info('MD5 check failed, trying Bill Number fallback', ['payment_id' => $payment->id]);
-            $isPaid = $bakongService->checkTransactionByBillNumber((string) $payment->order_id);
+            Log::info('MD5 check failed, trying Bill Number fallback', ['payment_id' => $payment->id, 'reason' => $bakongMsg]);
+            $checkResult = $bakongService->checkTransactionByBillNumber((string) $payment->order_id);
+            $isPaid = $checkResult['success'];
+            $bakongMsg = $checkResult['message'];
         }
 
-        Log::info('checkKhqr result', ['payment_id' => $payment->id, 'isPaid' => $isPaid, 'order_id' => $payment->order_id]);
+        Log::info('checkKhqr result', [
+            'payment_id' => $payment->id, 
+            'isPaid' => $isPaid, 
+            'order_id' => $payment->order_id,
+            'bakong_msg' => $bakongMsg
+        ]);
 
         if ($isPaid) {
             Log::info('Updating payment and order to paid', ['payment_id' => $payment->id, 'order_id' => $payment->order_id]);
@@ -178,6 +187,10 @@ class PaymentController extends Controller
             return response()->json(['paid' => true, 'status' => 'paid']);
         }
 
-        return response()->json(['paid' => false, 'status' => $payment->status]);
+        return response()->json([
+            'paid' => false, 
+            'status' => $payment->status,
+            'bakong_msg' => $bakongMsg
+        ]);
     }
 }

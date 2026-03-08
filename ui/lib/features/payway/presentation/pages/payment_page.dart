@@ -170,6 +170,9 @@ class _PaymentPageState extends State<PaymentPage> {
         if (mounted) setState(() {
           _isChecking = false;
           _debugStatus = "Pending: ${result['status'] ?? 'unknown'}";
+          if (result['bakong_msg'] != null) {
+            _debugStatus += "\nBakong: ${result['bakong_msg']}";
+          }
           // If body is unexpectedly large or different, show a snippet
           if (response.body.length > 100) {
             _debugStatus += " (Body: ${response.body.substring(0, 50)}...)";
