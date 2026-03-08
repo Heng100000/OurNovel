@@ -175,7 +175,10 @@ class _PaymentPageState extends State<PaymentPage> {
           }
           if (result['bakong_debug'] != null) {
             final debug = result['bakong_debug'];
-            _debugStatus += "\nEnv: ${debug['account_id']} | Token: ${debug['token_snippet']}";
+            final dbMd5 = (debug['md5_db'] as String?)?.substring(0, 6) ?? 'null';
+            final calcMd5 = (debug['md5_calc'] as String?)?.substring(0, 6) ?? 'null';
+            _debugStatus += "\nEnv: ${debug['account_id']}";
+            _debugStatus += "\nMD5: DB($dbMd5) vs Calc($calcMd5)";
           }
           // If body is unexpectedly large or different, show a snippet
           if (response.body.length > 200) {
