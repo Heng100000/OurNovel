@@ -24,9 +24,11 @@ class PaymentResource extends JsonResource
                 'total_price' => (float) $this->order->total_price,
                 'status' => $this->order->status,
             ]),
-            'qr_code' => $this->when(isset($this->qr_code), fn () => $this->qr_code),
-            'deep_link' => $this->when(isset($this->deep_link), fn () => $this->deep_link),
-            'qr_image_url' => $this->when(isset($this->qr_image_url), fn () => $this->qr_image_url),
+            'qr_code' => $this->qr_code,
+            'deep_link' => $this->deep_link,
+            'qr_image_url' => $this->when(isset($this->qr_code), function () {
+                return (new \App\Services\BakongService())->getQrImageUrl($this->qr_code);
+            }),
         ];
     }
 }

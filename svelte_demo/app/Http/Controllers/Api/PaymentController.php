@@ -45,16 +45,21 @@ class PaymentController extends Controller
 
         // Ensure QR data is available even for existing payments
         if (in_array($payment->method, ['bakong', 'aba', 'aceleda']) && $payment->status === 'pending') {
-            $result = $bakongService->generateQR($payment);
-            if ($result) {
-                // We update the txn_id in case config changed, but be careful with existing payments.
-                // However, the current check logic uses txn_id from DB.
-                // If we want to support checking by MD5, we must match what's on the user's screen.
-                $payment->updateQuietly(['txn_id' => $result['md5']]);
-                $payment->qr_code = $result['qr'];
-                $payment->qr_image_url = $bakongService->getQrImageUrl($result['qr']);
-                $payment->deep_link = $bakongService->generateDeepLink($result['qr']);
+            if (empty($payment->qr_code)) {
+                $result = $bakongService->generateQR($payment);
+                if ($result) {
+                    $payment->updateQuietly([
+                        'txn_id' => $result['md5'],
+                        'qr_code' => $result['qr'],
+                        'deep_link' => $bakongService->generateDeepLink($result['qr'])
+                    ]);
+                }
             }
+            
+            // Attach values for Resource to use
+            $payment->qr_code = $payment->qr_code;
+            $payment->qr_image_url = $bakongService->getQrImageUrl($payment->qr_code ?? '');
+            $payment->deep_link = $payment->deep_link;
         }
 
         return new PaymentResource($payment->load('order'));
@@ -92,11 +97,16 @@ class PaymentController extends Controller
             $result = $bakongService->generateQR($payment);
             Log::info('PaymentStore: Bakong QR generated', ['elapsed' => microtime(true) - $startTime]);
             if ($result) {
-                $payment->updateQuietly(['txn_id' => $result['md5']]);
+                $deepLink = $bakongService->generateDeepLink($result['qr']);
+                $payment->updateQuietly([
+                    'txn_id' => $result['md5'],
+                    'qr_code' => $result['qr'],
+                    'deep_link' => $deepLink
+                ]);
                 // Attach temporary properties for Resource to use
                 $payment->qr_code = $result['qr'];
                 $payment->qr_image_url = $bakongService->getQrImageUrl($result['qr']);
-                $payment->deep_link = $bakongService->generateDeepLink($result['qr']);
+                $payment->deep_link = $deepLink;
             }
         } elseif ($payment->method === 'cash') {
             Log::info('PaymentStore: Handling Cash Payment', ['elapsed' => microtime(true) - $startTime]);
