@@ -190,7 +190,8 @@ class PaymentController extends Controller
         return response()->json([
             'paid' => false, 
             'status' => $payment->status,
-            'bakong_msg' => $bakongMsg
+            'bakong_msg' => $bakongMsg,
+            'bakong_debug' => $bakongService->getDebugInfo()
         ]);
     }
 }
