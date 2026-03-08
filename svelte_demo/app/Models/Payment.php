@@ -18,6 +18,8 @@ class Payment extends Model
         'status',
         'txn_id',
         'khqr_md5',
+        'qr_code',
+        'deep_link',
     ];
 
     protected function casts(): array
