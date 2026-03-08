@@ -160,11 +160,24 @@ class PaymentController extends Controller
             return response()->json(['paid' => false, 'message' => 'No QR generated for this payment yet.'], 422);
         }
 
-        Log::info('Bakong API polling', ['payment_id' => $payment->id, 'md5' => $payment->txn_id, 'bill' => $payment->order_id]);
+        $md5_db = $payment->txn_id;
+        $md5_calc = !empty($payment->qr_code) ? md5($payment->qr_code) : null;
 
-        $checkResult = $bakongService->checkTransactionByMD5($payment->txn_id);
-        $isPaid = $checkResult['success'];
-        $bakongMsg = $checkResult['message'];
+        if ($md5_calc && $md5_db !== $md5_calc) {
+            Log::warning('Bakong MD5 Mismatch detected', [
+                'payment_id' => $payment->id,
+                'db' => $md5_db,
+                'calc' => $md5_calc
+            ]);
+            // For checking, we should probably prefer the calc one if it exists
+            $checkResult = $bakongService->checkTransactionByMD5($md5_calc);
+            $isPaid = $checkResult['success'];
+            $bakongMsg = $checkResult['message'];
+        } else {
+            $checkResult = $bakongService->checkTransactionByMD5($md5_db);
+            $isPaid = $checkResult['success'];
+            $bakongMsg = $checkResult['message'];
+        }
 
         if (! $isPaid) {
             Log::info('MD5 check failed, trying Bill Number fallback', ['payment_id' => $payment->id, 'reason' => $bakongMsg]);
@@ -201,7 +214,11 @@ class PaymentController extends Controller
             'paid' => false, 
             'status' => $payment->status,
             'bakong_msg' => $bakongMsg,
-            'bakong_debug' => $bakongService->getDebugInfo()
+            'bakong_debug' => array_merge($bakongService->getDebugInfo(), [
+                'md5_db' => $payment->txn_id,
+                'md5_calc' => !empty($payment->qr_code) ? md5($payment->qr_code) : null,
+                'order_id' => $payment->order_id,
+            ])
         ]);
     }
 }
