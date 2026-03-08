@@ -116,44 +116,23 @@ class BakongService
         }
 
         try {
-            // Using Laravel Http facade to have control over SSL verification
-            $response = \Illuminate\Support\Facades\Http::withToken($this->token)
-                ->withOptions([
-                    'verify' => false,
-                ])
-                ->timeout(5)
-                ->post('https://api-bakong.nbc.gov.kh/v1/check_transaction_by_md5', [
-                    'md5' => $md5,
-                    'accountId' => $this->accountId,
-                ]);
+            $bakong = new \KHQR\BakongKHQR($this->token);
+            // The SDK returns an array with 'responseCode', 'responseMessage', etc.
+            $response = $bakong->checkTransactionByMD5($md5);
 
-            $body = $response->json();
-            $msg = $body['responseMessage'] ?? ($body['message'] ?? 'Unknown error');
-
-            Log::info('Bakong MD5 Check Raw Response', [
-                'id' => $md5,
-                'status' => $response->status(),
-                'body' => $response->body(),
-                'token_length' => strlen($this->token),
+            Log::info('Bakong SDK MD5 Check Response', [
+                'md5' => $md5,
+                'response' => $response,
                 'account_id' => $this->accountId,
             ]);
 
-            if ($response->successful()) {
-                if (isset($body['responseCode']) && $body['responseCode'] === 0 && !empty($body['data'])) {
-                    Log::info('Bakong MD5 Check: PAID SUCCESS', ['id' => $md5]);
-                    return ['success' => true, 'message' => 'Paid'];
-                }
-                
-                Log::info('Bakong MD5 Check: NOT PAID', ['id' => $md5, 'responseCode' => $body['responseCode'] ?? 'N/A']);
-                return ['success' => false, 'message' => $msg];
+            if (isset($response['responseCode']) && $response['responseCode'] === 0 && !empty($response['data'])) {
+                Log::info('Bakong MD5 Check: PAID SUCCESS', ['id' => $md5]);
+                return ['success' => true, 'message' => 'Paid'];
             }
 
-            Log::error('Bakong MD5 Check Request Failed', [
-                'id' => $md5,
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-            return ['success' => false, 'message' => "HTTP {$response->status()}: $msg"];
+            $msg = $response['responseMessage'] ?? ($response['message'] ?? 'Not found');
+            return ['success' => false, 'message' => $msg];
         } catch (\Exception $e) {
             Log::error('Bakong MD5 check exception', ['message' => $e->getMessage()]);
             return ['success' => false, 'message' => $e->getMessage()];
@@ -163,6 +142,9 @@ class BakongService
     /**
      * Fallback: Check if a transaction identified by billNumber has been paid.
      */
+    /**
+     * Fallback: Check if a transaction identified by external ref (Bill Number/Order ID) has been paid.
+     */
     public function checkTransactionByBillNumber(string $billNumber): array
     {
         if (empty($this->token)) {
@@ -170,44 +152,37 @@ class BakongService
         }
 
         try {
-            $response = \Illuminate\Support\Facades\Http::withToken($this->token)
-                ->withOptions(['verify' => false])
-                ->timeout(5)
-                ->post('https://api-bakong.nbc.gov.kh/v1/check_transaction_by_bill_number', [
-                    'billNumber' => $billNumber,
-                    'accountId' => $this->accountId,
-                ]);
+            $bakong = new \KHQR\BakongKHQR($this->token);
+            // Bakong API often maps externalRef to the billNumber provided in QR
+            $response = $bakong->checkTransactionByExternalReference($billNumber);
 
-            $body = $response->json();
-            $msg = $body['responseMessage'] ?? ($body['message'] ?? 'Unknown error');
-
-            Log::info('Bakong Bill Check Raw Response', [
+            Log::info('Bakong SDK External Ref Check Response', [
                 'bill' => $billNumber,
-                'status' => $response->status(),
-                'body' => $response->body(),
+                'response' => $response,
             ]);
 
-            if ($response->successful()) {
-                if (isset($body['responseCode']) && $body['responseCode'] === 0 && !empty($body['data'])) {
-                    Log::info('Bakong Bill Check: PAID SUCCESS', ['bill' => $billNumber]);
-                    return ['success' => true, 'message' => 'Paid'];
-                }
-                
-                Log::info('Bakong Bill Check: NOT PAID', ['bill' => $billNumber, 'responseCode' => $body['responseCode'] ?? 'N/A']);
-                return ['success' => false, 'message' => $msg];
+            if (isset($response['responseCode']) && $response['responseCode'] === 0 && !empty($response['data'])) {
+                Log::info('Bakong External Ref Check: PAID SUCCESS', ['bill' => $billNumber]);
+                return ['success' => true, 'message' => 'Paid'];
             }
 
-            Log::error('Bakong Bill Check Request Failed', [
-                'bill' => $billNumber,
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-            return ['success' => false, 'message' => "HTTP {$response->status()}: $msg"];
+            $msg = $response['responseMessage'] ?? ($response['message'] ?? 'Not found');
+            return ['success' => false, 'message' => "Ref Check: $msg"];
         } catch (\Exception $e) {
             Log::error('Bakong bill check exception', ['message' => $e->getMessage()]);
-
             return ['success' => false, 'message' => $e->getMessage()];
         }
+    }
+
+    public function getDebugInfo(): array
+    {
+        return [
+            'account_id' => $this->accountId,
+            'merchant_name' => $this->merchantName,
+            'merchant_city' => $this->merchantCity,
+            'has_token' => !empty($this->token),
+            'token_snippet' => !empty($this->token) ? substr($this->token, 0, 10) . '...' : 'none',
+        ];
     }
 
     /**

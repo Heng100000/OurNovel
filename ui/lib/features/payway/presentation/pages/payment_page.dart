@@ -173,9 +173,13 @@ class _PaymentPageState extends State<PaymentPage> {
           if (result['bakong_msg'] != null) {
             _debugStatus += "\nBakong: ${result['bakong_msg']}";
           }
+          if (result['bakong_debug'] != null) {
+            final debug = result['bakong_debug'];
+            _debugStatus += "\nEnv: ${debug['account_id']} | Token: ${debug['token_snippet']}";
+          }
           // If body is unexpectedly large or different, show a snippet
-          if (response.body.length > 100) {
-            _debugStatus += " (Body: ${response.body.substring(0, 50)}...)";
+          if (response.body.length > 200) {
+            _debugStatus += "\n(Body: ${response.body.substring(0, 50)}...)";
           }
         });
       }
