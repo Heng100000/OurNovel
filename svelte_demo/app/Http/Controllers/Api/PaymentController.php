@@ -159,7 +159,7 @@ class PaymentController extends Controller
             $isPaid = $bakongService->checkTransactionByBillNumber((string) $payment->order_id);
         }
 
-        Log::info('checkKhqr result', ['payment_id' => $payment->id, 'isPaid' => $isPaid]);
+        Log::info('checkKhqr result', ['payment_id' => $payment->id, 'isPaid' => $isPaid, 'order_id' => $payment->order_id]);
 
         if ($isPaid) {
             Log::info('Updating payment and order to paid', ['payment_id' => $payment->id, 'order_id' => $payment->order_id]);

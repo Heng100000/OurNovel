@@ -34,6 +34,7 @@ class _PaymentPageState extends State<PaymentPage> {
   Duration _remainingTime = const Duration(minutes: 5);
   int _retryCount = 0;
   final int _maxRetries = 100; // Increased to 100 (5 minutes) for better UX
+  String _debugStatus = "Initializing...";
 
   @override
   void initState() {
@@ -134,6 +135,7 @@ class _PaymentPageState extends State<PaymentPage> {
     setState(() => _isChecking = true);
 
     try {
+      setState(() => _debugStatus = "Checking server...");
       final result = await _paymentService.checkKhqrStatus(widget.payment.id);
       debugPrint('Payment Status: $result');
 
@@ -143,6 +145,7 @@ class _PaymentPageState extends State<PaymentPage> {
         setState(() {
           _isPaid = true;
           _isChecking = false;
+          _debugStatus = "Paid! Redirecting...";
           _countdownTimer?.cancel();
         });
         _pollingTimer?.cancel();
@@ -152,11 +155,17 @@ class _PaymentPageState extends State<PaymentPage> {
           if (mounted) _navigateToInvoice();
         });
       } else {
-        if (mounted) setState(() => _isChecking = false);
+        if (mounted) setState(() {
+          _isChecking = false;
+          _debugStatus = "Not paid (status: ${result['status']})";
+        });
       }
     } catch (e) {
       debugPrint('Payment check error: $e');
-      if (mounted) setState(() => _isChecking = false);
+      if (mounted) setState(() {
+        _isChecking = false;
+        _debugStatus = "Error: ${e.toString().split('\n').first}";
+      });
     }
   }
 
@@ -375,6 +384,15 @@ class _PaymentPageState extends State<PaymentPage> {
                         ],
                       ),
                     ),
+                  const SizedBox(height: 16),
+                  Text(
+                    _debugStatus,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey[400],
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
                 ] else ...[
                   // Celebrate Success
                   TweenAnimationBuilder<double>(
